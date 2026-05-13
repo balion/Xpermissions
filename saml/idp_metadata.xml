@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<!--
+  Place your Identity Provider's SAML 2.0 metadata here.
+
+  How to obtain it:
+    - Keycloak : Realm Settings → SAML 2.0 Identity Provider Metadata
+    - Azure AD  : Enterprise Applications → your app → Single sign-on → Federation Metadata XML
+    - Okta      : Applications → your app → Sign On → Identity Provider metadata
+
+  This file is referenced by SAML_CONFIG['metadata']['local'] in settings/base.py.
+-->

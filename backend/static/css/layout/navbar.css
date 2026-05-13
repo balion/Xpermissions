@@ -1,0 +1,15 @@
+#top-navbar {
+  height: var(--navbar-height);
+  z-index: 1040;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+}
+
+#top-navbar .navbar-brand {
+  font-size: 1rem;
+  letter-spacing: 0.02em;
+}
+
+#sidebar-toggle {
+  border-color: rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.7);
+}

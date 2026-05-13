@@ -1,0 +1,147 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Permissions: {{ role.name }} — Admin Xpermisions{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/modules/roles.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center mb-4">
+  <a href="{% url 'roles:detail' role.pk %}" class="btn btn-outline-secondary btn-sm me-3">
+    <i class="bi bi-arrow-left"></i>
+  </a>
+  <div>
+    <h4 class="fw-bold mb-0">Permissions: {{ role.name }}</h4>
+    <span class="text-muted small">Check the actions each module and project allows for this role.</span>
+  </div>
+</div>
+
+<form method="post" id="permissions-form">
+  {% csrf_token %}
+
+  {# --- Module permissions --- #}
+  <div class="card border-0 shadow-sm mb-3">
+    <div class="card-header bg-white py-2 d-flex align-items-center gap-3">
+      <span class="fw-semibold me-2">Module Permissions</span>
+      <span class="text-muted small fw-semibold">Quick select:</span>
+      <button type="button" class="btn btn-outline-secondary btn-xs" data-scope="module" data-action-toggle="all">
+        <i class="bi bi-check2-all me-1"></i>All
+      </button>
+      <button type="button" class="btn btn-outline-secondary btn-xs" data-scope="module" data-action-toggle="none">
+        <i class="bi bi-x-lg me-1"></i>None
+      </button>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-bordered mb-0 permissions-table" id="module-table">
+          <thead class="table-light">
+            <tr>
+              <th class="ps-3" style="min-width: 180px;">Module</th>
+              {% for action in actions %}
+              <th class="text-center" style="min-width: 90px;">
+                <div>{{ action|capfirst }}</div>
+                <button type="button" class="btn btn-link btn-xs p-0 text-muted col-toggle"
+                        data-table="module-table" data-action="{{ action }}" title="Toggle column">
+                  <i class="bi bi-toggles2"></i>
+                </button>
+              </th>
+              {% endfor %}
+              <th class="text-center" style="min-width: 70px;">
+                <span class="text-muted small">Row</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in table_rows %}
+            <tr data-module="{{ row.module }}">
+              <td class="ps-3 fw-semibold">{{ row.label }}</td>
+              {% for field in row.fields %}
+              <td class="text-center align-middle">{{ field.as_widget }}</td>
+              {% endfor %}
+              <td class="text-center align-middle">
+                <button type="button" class="btn btn-outline-secondary btn-xs row-toggle" title="Toggle row">
+                  <i class="bi bi-toggles2"></i>
+                </button>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  {# --- Project permissions --- #}
+  <div class="card border-0 shadow-sm mb-3">
+    <div class="card-header bg-white py-2 d-flex align-items-center gap-3">
+      <span class="fw-semibold me-2">Project Permissions</span>
+      {% if project_rows %}
+      <span class="text-muted small">Grants access to specific projects regardless of module-level setting.</span>
+      <span class="ms-auto text-muted small fw-semibold">Quick select:</span>
+      <button type="button" class="btn btn-outline-secondary btn-xs" data-scope="project" data-action-toggle="all">
+        <i class="bi bi-check2-all me-1"></i>All
+      </button>
+      <button type="button" class="btn btn-outline-secondary btn-xs" data-scope="project" data-action-toggle="none">
+        <i class="bi bi-x-lg me-1"></i>None
+      </button>
+      {% endif %}
+    </div>
+    <div class="card-body {% if not project_rows %}py-4{% else %}p-0{% endif %}">
+      {% if project_rows %}
+      <div class="table-responsive">
+        <table class="table table-bordered mb-0 permissions-table" id="project-table">
+          <thead class="table-light">
+            <tr>
+              <th class="ps-3" style="min-width: 180px;">Project</th>
+              {% for action in actions %}
+              <th class="text-center" style="min-width: 90px;">
+                <div>{{ action|capfirst }}</div>
+                <button type="button" class="btn btn-link btn-xs p-0 text-muted col-toggle"
+                        data-table="project-table" data-action="{{ action }}" title="Toggle column">
+                  <i class="bi bi-toggles2"></i>
+                </button>
+              </th>
+              {% endfor %}
+              <th class="text-center" style="min-width: 70px;">
+                <span class="text-muted small">Row</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in project_rows %}
+            <tr data-module="project-{{ row.project.pk }}">
+              <td class="ps-3 fw-semibold">{{ row.project.name }}</td>
+              {% for field in row.fields %}
+              <td class="text-center align-middle">{{ field.as_widget }}</td>
+              {% endfor %}
+              <td class="text-center align-middle">
+                <button type="button" class="btn btn-outline-secondary btn-xs row-toggle" title="Toggle row">
+                  <i class="bi bi-toggles2"></i>
+                </button>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="text-center text-muted mb-0">No projects created yet. <a href="{% url 'projects:create' %}">Add a project</a> to configure per-project access.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="d-flex gap-2">
+    <button type="submit" class="btn btn-primary">
+      <i class="bi bi-check-lg me-1"></i>Save Permissions
+    </button>
+    <a href="{% url 'roles:detail' role.pk %}" class="btn btn-outline-secondary">Cancel</a>
+  </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+{% load static %}
+<script src="{% static 'js/modules/roles.js' %}"></script>
+{% endblock %}

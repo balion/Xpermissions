@@ -1,0 +1,330 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Approval: {{ project.name }} — Admin Xpermisions{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/modules/projects.css' %}">
+<style>
+  .json-editor {
+    font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+    font-size: 0.82rem;
+    line-height: 1.5;
+    resize: vertical;
+    min-height: 280px;
+    background: #1e1e2e;
+    color: #cdd6f4;
+    border: 1px solid #45475a;
+    border-radius: .375rem;
+  }
+  .json-editor:focus { border-color: #89b4fa; box-shadow: 0 0 0 .2rem rgba(137,180,250,.2); outline: 0; }
+  .step-badge-waiting    { background: #e9ecef; color: #495057; }
+  .step-badge-pending    { background: #fff3cd; color: #856404; }
+  .step-badge-approved   { background: #d1e7dd; color: #0f5132; }
+  .step-badge-rejected   { background: #f8d7da; color: #842029; }
+  .step-badge-skipped    { background: #e9ecef; color: #6c757d; }
+  .step-badge-changes_requested { background: #fff3cd; color: #664d03; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center mb-4">
+  <a href="{% url 'projects:detail' project.pk %}" class="btn btn-outline-secondary btn-sm me-3">
+    <i class="bi bi-arrow-left"></i>
+  </a>
+  <div>
+    <h4 class="fw-bold mb-0"><i class="bi bi-check2-circle me-2 text-primary"></i>Approval: {{ project.name }}</h4>
+    <span class="text-muted small">Configure the approval workflow and manage approval requests.</span>
+  </div>
+</div>
+
+{% include 'components/alerts.html' %}
+
+<div class="row g-4">
+
+  {# ── Left column: config ─────────────────────────────────────────────── #}
+  <div class="col-lg-5">
+
+    {# Pending approvals for this user #}
+    {% if pending_steps %}
+    <div class="card border-0 shadow-sm mb-4 border-start border-warning border-3">
+      <div class="card-header bg-white fw-semibold py-3">
+        <i class="bi bi-hourglass-split me-2 text-warning"></i>Pending Your Approval
+      </div>
+      <div class="card-body p-0">
+        {% for item in pending_steps %}
+        <div class="d-flex align-items-center justify-content-between px-3 py-2 border-bottom">
+          <div>
+            <div class="fw-semibold small">{{ item.step.step_key }}</div>
+            <div class="text-muted" style="font-size:.75rem;">
+              Workflow #{{ item.instance.pk }} — {{ item.instance.workflow_name }}
+            </div>
+          </div>
+          <a href="{% url 'projects:workflow_instance' project.pk item.instance.pk %}"
+             class="btn btn-warning btn-sm">
+            <i class="bi bi-check2-square me-1"></i>Review
+          </a>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    {# Configuration form #}
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white fw-semibold py-3 d-flex align-items-center justify-content-between">
+        <span><i class="bi bi-gear me-2 text-secondary"></i>Workflow Configuration</span>
+        {% if approval_config %}
+        <span class="badge {% if approval_config.is_enabled %}bg-success{% else %}bg-secondary{% endif %} fw-normal">
+          {% if approval_config.is_enabled %}Enabled{% else %}Disabled{% endif %}
+        </span>
+        {% endif %}
+      </div>
+      <div class="card-body">
+        <form method="post" id="configForm">
+          {% csrf_token %}
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Workflow Template</label>
+            <select name="workflow_template" id="templateSelect" class="form-select form-select-sm">
+              <option value="">— None (use custom config only) —</option>
+              {% for t in templates %}
+              <option value="{{ t.pk }}"
+                data-config="{{ t.config|safe }}"
+                {% if approval_config and approval_config.workflow_template_id == t.pk %}selected{% endif %}>
+                {{ t.name }}{% if t.version > 1 %} v{{ t.version }}{% endif %}
+              </option>
+              {% endfor %}
+            </select>
+            <div class="form-text">Select a template to pre-fill the JSON editor below.</div>
+          </div>
+
+          <div class="mb-3">
+            <div class="d-flex align-items-center justify-content-between mb-1">
+              <label class="form-label fw-semibold mb-0">Workflow Config (JSON)</label>
+              <div class="d-flex gap-2">
+                <button type="button" class="btn btn-link btn-sm p-0" id="loadTemplate">
+                  <i class="bi bi-download me-1"></i>Load from template
+                </button>
+                <button type="button" class="btn btn-link btn-sm p-0" id="formatJson">
+                  <i class="bi bi-braces me-1"></i>Format
+                </button>
+              </div>
+            </div>
+            <textarea name="custom_config" id="configEditor" class="form-control json-editor"
+                      placeholder='{"workflow_name": "...", "steps": [...]}'>{{ config_json }}</textarea>
+            <div id="jsonError" class="text-danger small mt-1 d-none"></div>
+            <div class="form-text">
+              Leave blank to use the selected template's config without modification.
+              Custom config takes priority over the template.
+            </div>
+          </div>
+
+          <div class="form-check form-switch mb-3">
+            <input class="form-check-input" type="checkbox" name="is_enabled" id="isEnabled"
+                   {% if not approval_config or approval_config.is_enabled %}checked{% endif %}>
+            <label class="form-check-label" for="isEnabled">Approval module enabled</label>
+          </div>
+
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary btn-sm">
+              <i class="bi bi-check-lg me-1"></i>Save configuration
+            </button>
+            {% if approval_config and approval_config.effective_config and approval_config.is_enabled %}
+            <button type="submit" form="startForm" class="btn btn-success btn-sm">
+              <i class="bi bi-play-fill me-1"></i>Start new workflow
+            </button>
+            {% endif %}
+          </div>
+        </form>
+
+        {# Hidden form for starting a workflow #}
+        <form method="post" id="startForm" action="{% url 'projects:workflow_start' project.pk %}">
+          {% csrf_token %}
+        </form>
+      </div>
+    </div>
+
+    {# JSON quick reference #}
+    <div class="card border-0 shadow-sm mt-3">
+      <div class="card-header bg-white fw-semibold py-2">
+        <button class="btn btn-link btn-sm text-decoration-none p-0 text-dark fw-semibold"
+                type="button" data-bs-toggle="collapse" data-bs-target="#jsonReference">
+          <i class="bi bi-question-circle me-2 text-secondary"></i>JSON config reference
+          <i class="bi bi-chevron-down ms-1"></i>
+        </button>
+      </div>
+      <div class="collapse" id="jsonReference">
+        <div class="card-body small">
+          <pre class="bg-dark text-light p-3 rounded" style="font-size:.75rem; overflow-x:auto;">{
+  "workflow_name": "Project Approval",
+  "callback": "mark_project_approved",
+  "steps": [
+    {
+      "step_key": "manager_review",
+      "step_order": 1,
+      "approval_type": "any",
+      "approvers": [
+        {"type": "user", "id": 5},
+        {"type": "role", "id": 2}
+      ],
+      "deadline_hours": 48,
+      "notifications": {
+        "on_activate": {
+          "template": "workflow_step_activated",
+          "recipients": "approvers"
+        },
+        "on_complete": {
+          "template": "workflow_step_done",
+          "recipients": "requester"
+        }
+      }
+    }
+  ]
+}</pre>
+          <dl class="row small mt-2 mb-0">
+            <dt class="col-sm-4">approval_type</dt>
+            <dd class="col-sm-8"><code>any</code> | <code>all</code> | <code>majority</code></dd>
+            <dt class="col-sm-4">approvers.type</dt>
+            <dd class="col-sm-8"><code>user</code> | <code>role</code> | <code>group</code></dd>
+            <dt class="col-sm-4">callback</dt>
+            <dd class="col-sm-8">Method called on the project object when workflow finishes</dd>
+          </dl>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  {# ── Right column: workflow history ──────────────────────────────────── #}
+  <div class="col-lg-7">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white fw-semibold py-3 d-flex align-items-center justify-content-between">
+        <span><i class="bi bi-clock-history me-2 text-primary"></i>Workflow History</span>
+        {% if approval_config and approval_config.effective_config and approval_config.is_enabled %}
+        <form method="post" action="{% url 'projects:workflow_start' project.pk %}" class="mb-0">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-success btn-sm">
+            <i class="bi bi-play-fill me-1"></i>Start new workflow
+          </button>
+        </form>
+        {% endif %}
+      </div>
+      <div class="card-body p-0">
+        {% if instances %}
+        <div class="table-responsive">
+          <table class="table table-sm table-hover mb-0">
+            <thead class="table-light">
+              <tr>
+                <th class="ps-3">#</th>
+                <th>Workflow</th>
+                <th>Status</th>
+                <th>Steps</th>
+                <th>Started</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for inst in instances %}
+              <tr>
+                <td class="ps-3 text-muted small">{{ inst.pk }}</td>
+                <td class="small fw-semibold">{{ inst.workflow_name }}</td>
+                <td>
+                  <span class="badge
+                    {% if inst.status == 'approved' %}bg-success
+                    {% elif inst.status == 'rejected' %}bg-danger
+                    {% elif inst.status == 'in_progress' %}bg-primary
+                    {% elif inst.status == 'cancelled' %}bg-secondary
+                    {% else %}bg-light text-dark border{% endif %}">
+                    {{ inst.get_status_display }}
+                  </span>
+                </td>
+                <td>
+                  {% with total=inst.steps.count done=inst.steps.filter_approved %}
+                  <div class="d-flex align-items-center gap-2">
+                    {% for step in inst.steps.all %}
+                    <span class="badge step-badge-{{ step.status }}" title="{{ step.step_key }}: {{ step.status }}">
+                      {{ step.step_order }}
+                    </span>
+                    {% endfor %}
+                  </div>
+                  {% endwith %}
+                </td>
+                <td class="small text-muted">{{ inst.started_at|date:"d. m. Y H:i" }}</td>
+                <td>
+                  <a href="{% url 'projects:workflow_instance' project.pk inst.pk %}"
+                     class="btn btn-outline-secondary btn-xs">
+                    <i class="bi bi-eye"></i>
+                  </a>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="text-center text-muted py-5 small">
+          <i class="bi bi-inbox display-6 d-block mb-2 opacity-25"></i>
+          No workflow instances yet.
+          {% if approval_config and approval_config.effective_config %}
+          Start the first one above.
+          {% else %}
+          Configure a workflow template first.
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  const templateSelect = document.getElementById('templateSelect');
+  const configEditor   = document.getElementById('configEditor');
+  const jsonError      = document.getElementById('jsonError');
+  const formatBtn      = document.getElementById('formatJson');
+  const loadBtn        = document.getElementById('loadTemplate');
+
+  function validateJson(text) {
+    if (!text.trim()) { jsonError.classList.add('d-none'); return true; }
+    try { JSON.parse(text); jsonError.classList.add('d-none'); return true; }
+    catch (e) {
+      jsonError.textContent = 'JSON error: ' + e.message;
+      jsonError.classList.remove('d-none');
+      return false;
+    }
+  }
+
+  configEditor.addEventListener('input', () => validateJson(configEditor.value));
+
+  formatBtn.addEventListener('click', () => {
+    try {
+      const parsed = JSON.parse(configEditor.value);
+      configEditor.value = JSON.stringify(parsed, null, 2);
+      jsonError.classList.add('d-none');
+    } catch (e) {
+      jsonError.textContent = 'Cannot format — invalid JSON: ' + e.message;
+      jsonError.classList.remove('d-none');
+    }
+  });
+
+  loadBtn.addEventListener('click', () => {
+    const opt = templateSelect.selectedOptions[0];
+    if (!opt || !opt.dataset.config) return;
+    try {
+      const parsed = JSON.parse(opt.dataset.config);
+      configEditor.value = JSON.stringify(parsed, null, 2);
+      jsonError.classList.add('d-none');
+    } catch(e) { /* ignore */ }
+  });
+
+  document.getElementById('configForm').addEventListener('submit', function (e) {
+    if (!validateJson(configEditor.value)) { e.preventDefault(); }
+  });
+})();
+</script>
+{% endblock %}

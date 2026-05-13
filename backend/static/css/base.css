@@ -1,0 +1,60 @@
+:root {
+  --sidebar-width: 240px;
+  --navbar-height: 56px;
+  --primary: #0d6efd;
+  --sidebar-bg: #ffffff;
+  --sidebar-link: #495057;
+  --sidebar-link-active: var(--primary);
+  --sidebar-link-hover-bg: #f1f5f9;
+}
+
+body {
+  font-size: 0.9rem;
+  padding-top: var(--navbar-height);
+}
+
+#page-wrapper {
+  min-height: calc(100vh - var(--navbar-height));
+}
+
+.main-content {
+  min-height: calc(100vh - var(--navbar-height));
+  overflow-y: auto;
+}
+
+.btn-xs {
+  padding: 0.2rem 0.45rem;
+  font-size: 0.78rem;
+  border-radius: 0.25rem;
+  line-height: 1.4;
+}
+
+.card {
+  border-radius: 0.6rem;
+}
+
+.card-header {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 0.6rem 0.6rem 0 0 !important;
+}
+
+.table th {
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #6c757d;
+}
+
+.table td {
+  vertical-align: middle;
+}
+
+.alerts-container {
+  position: relative;
+  z-index: 10;
+}
+
+.font-monospace {
+  font-family: 'Courier New', Courier, monospace;
+}

@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Roles — Admin Xpermisions{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/modules/roles.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <h4 class="fw-bold mb-0"><i class="bi bi-shield-check me-2 text-primary"></i>Roles & Permissions</h4>
+  <a href="{% url 'roles:create' %}" class="btn btn-primary btn-sm">
+    <i class="bi bi-plus-lg me-1"></i>New Role
+  </a>
+</div>
+
+<div class="card border-0 shadow-sm">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead class="table-light">
+          <tr>
+            <th class="ps-3">Name</th>
+            <th>Users</th>
+            <th>Superadmin</th>
+            <th>Created</th>
+            <th class="text-end pe-3">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for role in roles %}
+          <tr>
+            <td class="ps-3 fw-semibold">
+              <a href="{% url 'roles:detail' role.pk %}" class="text-decoration-none">{{ role.name }}</a>
+            </td>
+            <td class="text-muted">{{ role.user_count }}</td>
+            <td>
+              {% if role.is_superadmin %}
+              <span class="badge bg-danger">Superadmin</span>
+              {% else %}<span class="text-muted">—</span>{% endif %}
+            </td>
+            <td class="text-muted small">{{ role.created_at|date:"d. m. Y" }}</td>
+            <td class="text-end pe-3">
+              <a href="{% url 'roles:permissions' role.pk %}" class="btn btn-outline-secondary btn-xs me-1"
+                 title="Edit permissions"><i class="bi bi-sliders"></i></a>
+              <a href="{% url 'roles:update' role.pk %}" class="btn btn-outline-secondary btn-xs me-1">
+                <i class="bi bi-pencil"></i>
+              </a>
+              <button class="btn btn-outline-danger btn-xs"
+                      data-bs-toggle="modal" data-bs-target="#deleteModal"
+                      data-name="{{ role.name }}"
+                      data-url="{% url 'roles:delete' role.pk %}">
+                <i class="bi bi-trash"></i>
+              </button>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="5" class="text-center text-muted py-4">No roles defined yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{% include 'components/pagination.html' %}
+{% include 'components/confirm_delete_modal.html' %}
+{% endblock %}
+
+{% block extra_js %}
+{% load static %}
+<script src="{% static 'js/modules/roles.js' %}"></script>
+{% endblock %}

@@ -1,0 +1,48 @@
+.permissions-table th,
+.permissions-table td {
+  text-align: center;
+  vertical-align: middle;
+}
+
+.permissions-table th:first-child,
+.permissions-table td:first-child {
+  text-align: left;
+}
+
+.permissions-table tbody tr:hover {
+  background: #f8f9ff;
+}
+
+.permissions-table .perm-cb {
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-block;
+  width: 1.1em;
+  height: 1.1em;
+  border: 1px solid #adb5bd;
+  border-radius: 0.25em;
+  background-color: #fff;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  cursor: pointer;
+  vertical-align: middle;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.permissions-table .perm-cb:checked {
+  background-color: #0d6efd;
+  border-color: #0d6efd;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%23fff' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='m6 10 3 3 6-6'/%3e%3c/svg%3e");
+}
+
+.col-toggle {
+  font-size: 0.7rem;
+  opacity: 0.5;
+  transition: opacity 0.15s;
+}
+
+.col-toggle:hover {
+  opacity: 1;
+}

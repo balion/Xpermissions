@@ -1,0 +1,26 @@
+.roles-checkbox-list {
+  max-height: 220px;
+  overflow-y: auto;
+  background: #f8f9fa;
+}
+
+.roles-checkbox-list .form-check-input {
+  cursor: pointer;
+}
+
+.roles-checkbox-list .form-check-label {
+  cursor: pointer;
+}
+
+.user-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #e9ecef;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  color: #495057;
+  flex-shrink: 0;
+}

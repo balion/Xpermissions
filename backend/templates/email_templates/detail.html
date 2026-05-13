@@ -1,0 +1,135 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ template.name }} — Admin Xpermisions{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/modules/email_templates.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <div class="d-flex align-items-center">
+    <a href="{% url 'email_templates:list' %}" class="btn btn-outline-secondary btn-sm me-3">
+      <i class="bi bi-arrow-left"></i>
+    </a>
+    <div>
+      <h4 class="fw-bold mb-0">{{ template.name }}</h4>
+    </div>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'email_templates:update' template.pk %}" class="btn btn-outline-primary btn-sm">
+      <i class="bi bi-pencil me-1"></i>Edit
+    </a>
+    <button class="btn btn-outline-danger btn-sm"
+            data-bs-toggle="modal" data-bs-target="#deleteModal"
+            data-name="{{ template.name }}"
+            data-url="{% url 'email_templates:delete' template.pk %}">
+      <i class="bi bi-trash me-1"></i>Delete
+    </button>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-md-4">
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header bg-white fw-semibold py-3">Details</div>
+      <div class="card-body">
+        <dl class="row mb-0 small">
+          <dt class="col-sm-5 text-muted">Subject</dt>
+          <dd class="col-sm-7">{{ template.subject }}</dd>
+          <dt class="col-sm-5 text-muted">Status</dt>
+          <dd class="col-sm-7">
+            {% if template.is_active %}
+            <span class="badge bg-success">Active</span>
+            {% else %}
+            <span class="badge bg-secondary">Inactive</span>
+            {% endif %}
+          </dd>
+          <dt class="col-sm-5 text-muted">Created by</dt>
+          <dd class="col-sm-7">{{ template.created_by|default:"—" }}</dd>
+          <dt class="col-sm-5 text-muted">Updated</dt>
+          <dd class="col-sm-7">{{ template.updated_at|date:"d. m. Y H:i" }}</dd>
+        </dl>
+      </div>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white fw-semibold py-3">Send Test Email</div>
+      <div class="card-body">
+        <form method="post" action="{% url 'email_templates:send_test' template.pk %}">
+          {% csrf_token %}
+          <div class="mb-2">
+            <input type="email" name="recipient" class="form-control form-control-sm"
+                   placeholder="recipient@example.com" value="{{ request.user.email }}" required>
+          </div>
+          <button type="submit" class="btn btn-outline-primary btn-sm w-100">
+            <i class="bi bi-send me-1"></i>Send Test
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-8">
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header bg-white fw-semibold py-2 d-flex align-items-center justify-content-between">
+        <span>MJML Source</span>
+        <button class="btn btn-outline-secondary btn-xs" id="preview-btn"
+                data-url="{% url 'email_templates:preview' template.pk %}">
+          <i class="bi bi-eye me-1"></i>Preview
+        </button>
+      </div>
+      <div class="card-body p-2">
+        <pre class="mjml-source-pre">{{ template.mjml_body }}</pre>
+      </div>
+    </div>
+
+    <div class="card border-0 shadow-sm" id="preview-card" style="display:none;">
+      <div class="card-header bg-white fw-semibold py-3">Rendered Preview</div>
+      <div class="card-body p-0">
+        <iframe id="preview-frame" class="preview-iframe"></iframe>
+      </div>
+    </div>
+
+    <div class="card border-0 shadow-sm mt-3">
+      <div class="card-header bg-white fw-semibold py-2 d-flex justify-content-between align-items-center">
+        <span>Send Log (last 20)</span>
+        <a href="{% url 'email_templates:log' %}" class="btn btn-outline-secondary btn-xs">All logs</a>
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-sm table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th class="ps-3">Sent at</th>
+              <th>Recipient</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for log in recent_logs %}
+            <tr>
+              <td class="ps-3 text-muted small">{{ log.sent_at|date:"d.m.Y H:i" }}</td>
+              <td class="small">{{ log.recipient }}</td>
+              <td>
+                <span class="badge {% if log.status == 'success' %}bg-success{% else %}bg-danger{% endif %}">
+                  {{ log.status }}
+                </span>
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="3" class="text-center text-muted py-3 small">No sends yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% include 'components/confirm_delete_modal.html' %}
+{% endblock %}
+
+{% block extra_js %}
+{% load static %}
+<script src="{% static 'js/modules/email_templates.js' %}"></script>
+{% endblock %}

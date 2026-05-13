@@ -1,0 +1,116 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ title }} — Admin Xpermisions{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/modules/email_templates.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center mb-4">
+  <a href="{% url 'email_templates:list' %}" class="btn btn-outline-secondary btn-sm me-3">
+    <i class="bi bi-arrow-left"></i>
+  </a>
+  <h4 class="fw-bold mb-0">{{ title }}</h4>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-7">
+    <form method="post" id="template-form" novalidate>
+      {% csrf_token %}
+
+      <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header bg-white fw-semibold py-3">Template Settings</div>
+        <div class="card-body">
+          {% for field in form %}
+          {% if field.html_name != 'mjml_body' %}
+          <div class="mb-3">
+            {% if field.field.widget.input_type == 'checkbox' %}
+            <div class="form-check">
+              {{ field }}
+              <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+            </div>
+            {% else %}
+            <label for="{{ field.id_for_label }}" class="form-label fw-semibold">{{ field.label }}</label>
+            {{ field }}
+            {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+            {% endif %}
+            {% if field.errors %}<div class="text-danger small mt-1">{{ field.errors.0 }}</div>{% endif %}
+          </div>
+          {% endif %}
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white py-2 d-flex align-items-center justify-content-between">
+          <span class="fw-semibold">MJML Body</span>
+          <button type="button" class="btn btn-outline-primary btn-sm" id="preview-btn">
+            <i class="bi bi-eye me-1"></i>Preview
+          </button>
+        </div>
+        <div class="card-body p-2">
+          {{ form.mjml_body }}
+          {% if form.mjml_body.errors %}
+          <div class="text-danger small mt-1">{{ form.mjml_body.errors.0 }}</div>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="d-flex gap-2 mt-3">
+        <button type="submit" class="btn btn-primary">
+          <i class="bi bi-check-lg me-1"></i>Save
+        </button>
+        <a href="{% url 'email_templates:list' %}" class="btn btn-outline-secondary">Cancel</a>
+      </div>
+    </form>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="card border-0 shadow-sm sticky-top" style="top: 80px;">
+      <div class="card-header bg-white fw-semibold py-3 d-flex align-items-center justify-content-between">
+        <span><i class="bi bi-window me-2"></i>Preview</span>
+        <span class="text-muted small" id="preview-status">Click Preview to render</span>
+      </div>
+      <div class="card-body p-0">
+        <iframe id="preview-frame" class="preview-iframe" srcdoc="<p style='padding:2rem;color:#aaa;font-family:sans-serif;'>Preview will appear here.</p>"></iframe>
+      </div>
+    </div>
+
+    <div class="card border-0 shadow-sm mt-3">
+      <div class="card-header bg-white fw-semibold py-3">Available Variables</div>
+      <div class="card-body">
+        <p class="text-muted small mb-2">Use Django template syntax:</p>
+        <table class="table table-sm table-borderless mb-0">
+          {% verbatim %}
+          <tr><td class="font-monospace text-primary small">{{ user.first_name }}</td><td class="text-muted small">Recipient's first name</td></tr>
+          <tr><td class="font-monospace text-primary small">{{ user.last_name }}</td><td class="text-muted small">Recipient's last name</td></tr>
+          <tr><td class="font-monospace text-primary small">{{ user.email }}</td><td class="text-muted small">Recipient's email</td></tr>
+          <tr><td class="font-monospace text-primary small">{{ action_url }}</td><td class="text-muted small">Action link (project-specific)</td></tr>
+          <tr><td class="font-monospace text-primary small">{{ site_name }}</td><td class="text-muted small">Application name</td></tr>
+          {% endverbatim %}
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="previewErrorModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h6 class="modal-title">MJML Compilation Error</h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <pre id="preview-error-text" class="small text-danger mb-0"></pre>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% load static %}
+<script src="{% static 'js/modules/email_templates.js' %}"></script>
+{% endblock %}

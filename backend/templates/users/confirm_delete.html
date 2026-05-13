@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+
+{% block title %}Delete User — Admin Xpermisions{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center mb-4">
+  <a href="{% url 'users:list' %}" class="btn btn-outline-secondary btn-sm me-3">
+    <i class="bi bi-arrow-left"></i>
+  </a>
+  <h4 class="fw-bold mb-0">Delete User</h4>
+</div>
+
+<div class="card border-0 shadow-sm border-danger" style="max-width: 480px;">
+  <div class="card-body p-4">
+    <p class="mb-3">Are you sure you want to delete user <strong>{{ object.email }}</strong>?</p>
+    <p class="text-muted small">This action cannot be undone.</p>
+    <form method="post" class="d-flex gap-2 mt-4">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-danger">
+        <i class="bi bi-trash me-1"></i>Delete
+      </button>
+      <a href="{% url 'users:list' %}" class="btn btn-outline-secondary">Cancel</a>
+    </form>
+  </div>
+</div>
+{% endblock %}

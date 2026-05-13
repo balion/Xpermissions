@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Projects — Admin Xpermisions{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/modules/projects.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <h4 class="fw-bold mb-0"><i class="bi bi-diagram-3 me-2 text-primary"></i>External Projects</h4>
+  <a href="{% url 'projects:create' %}" class="btn btn-primary btn-sm">
+    <i class="bi bi-plus-lg me-1"></i>Add Project
+  </a>
+</div>
+
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-body py-2">
+    <form method="get" class="row g-2 align-items-end">
+      <div class="col-sm-5 col-md-4">
+        <input type="text" name="q" class="form-control form-control-sm"
+               placeholder="Search name…" value="{{ search_query }}">
+      </div>
+      <div class="col-sm-4 col-md-3">
+        <select name="status" class="form-select form-select-sm">
+          <option value="">All statuses</option>
+          <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active</option>
+          <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>Inactive</option>
+        </select>
+      </div>
+      <div class="col-auto">
+        <button type="submit" class="btn btn-outline-secondary btn-sm">Filter</button>
+        <a href="{% url 'projects:list' %}" class="btn btn-outline-secondary btn-sm ms-1">Reset</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead class="table-light">
+          <tr>
+            <th class="ps-3">Name</th>
+            <th>URL</th>
+            <th>Status</th>
+            <th>Created by</th>
+            <th class="text-end pe-3">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for project in projects %}
+          <tr>
+            <td class="ps-3 fw-semibold">
+              <a href="{% url 'projects:detail' project.pk %}" class="text-decoration-none">
+                {{ project.name }}
+              </a>
+            </td>
+            <td class="text-muted small">
+              {% if project.url %}
+              <a href="{{ project.url }}" target="_blank" rel="noopener noreferrer">{{ project.url|truncatechars:40 }}</a>
+              {% else %}—{% endif %}
+            </td>
+            <td>
+              <span class="badge {% if project.status == 'active' %}bg-success{% else %}bg-secondary{% endif %}">
+                {{ project.get_status_display }}
+              </span>
+            </td>
+            <td class="text-muted small">{{ project.created_by|default:"—" }}</td>
+            <td class="text-end pe-3">
+              <a href="{% url 'projects:update' project.pk %}" class="btn btn-outline-secondary btn-xs me-1">
+                <i class="bi bi-pencil"></i>
+              </a>
+              <button class="btn btn-outline-danger btn-xs"
+                      data-bs-toggle="modal" data-bs-target="#deleteModal"
+                      data-name="{{ project.name }}"
+                      data-url="{% url 'projects:delete' project.pk %}">
+                <i class="bi bi-trash"></i>
+              </button>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="5" class="text-center text-muted py-4">No projects found.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{% include 'components/pagination.html' %}
+{% include 'components/confirm_delete_modal.html' %}
+{% endblock %}
+
+{% block extra_js %}
+{% load static %}
+<script src="{% static 'js/modules/projects.js' %}"></script>
+{% endblock %}

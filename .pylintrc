@@ -1,0 +1,36 @@
+[MASTER]
+load-plugins=pylint_django
+django-settings-module=config.settings.dev
+ignore-paths=.*/migrations/.*,.*/tests/.*
+
+[FORMAT]
+max-line-length=120
+indent-string='    '
+
+[MESSAGES CONTROL]
+disable=
+    missing-module-docstring,
+    missing-class-docstring,
+    missing-function-docstring,
+    too-few-public-methods,
+    no-member,
+    import-outside-toplevel,
+    too-many-ancestors,
+    unused-argument,
+    abstract-method,
+    broad-exception-caught,
+    wildcard-import,
+    unused-wildcard-import
+
+[DESIGN]
+max-args=8
+max-attributes=10
+max-parents=15
+
+[TYPECHECK]
+generated-members=objects,pk,id
+
+[SIMILARITIES]
+min-similarity-lines=6
+ignore-comments=yes
+ignore-docstrings=yes

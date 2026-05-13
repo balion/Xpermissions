@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Audit Entry #{{ log.pk }} — Admin Xpermisions{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/modules/audit.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center mb-4">
+  <a href="{% url 'audit:list' %}" class="btn btn-outline-secondary btn-sm me-3">
+    <i class="bi bi-arrow-left"></i>
+  </a>
+  <h4 class="fw-bold mb-0">Audit Entry #{{ log.pk }}</h4>
+</div>
+
+<div class="row g-3">
+  <div class="col-md-5">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white fw-semibold py-3">Event Details</div>
+      <div class="card-body">
+        <dl class="row mb-0">
+          <dt class="col-sm-4 text-muted">Time</dt>
+          <dd class="col-sm-8">{{ log.timestamp|date:"d. m. Y H:i:s" }}</dd>
+          <dt class="col-sm-4 text-muted">User</dt>
+          <dd class="col-sm-8">{{ log.user|default:"Anonymous" }}</dd>
+          <dt class="col-sm-4 text-muted">Action</dt>
+          <dd class="col-sm-8">
+            <span class="badge
+              {% if log.action == 'CREATE' %}bg-success
+              {% elif log.action == 'DELETE' %}bg-danger
+              {% elif log.action == 'LOGIN' %}bg-primary
+              {% else %}bg-secondary{% endif %}">{{ log.action }}</span>
+          </dd>
+          <dt class="col-sm-4 text-muted">Module</dt>
+          <dd class="col-sm-8">{{ log.module }}</dd>
+          <dt class="col-sm-4 text-muted">Object</dt>
+          <dd class="col-sm-8">{{ log.object_repr }}</dd>
+          <dt class="col-sm-4 text-muted">Object ID</dt>
+          <dd class="col-sm-8 text-muted">{{ log.object_id|default:"—" }}</dd>
+          <dt class="col-sm-4 text-muted">IP Address</dt>
+          <dd class="col-sm-8 text-muted">{{ log.ip_address|default:"—" }}</dd>
+          <dt class="col-sm-4 text-muted">User Agent</dt>
+          <dd class="col-sm-8 text-muted small">{{ log.user_agent|default:"—"|truncatechars:80 }}</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+
+  {% if log.before_data or log.after_data %}
+  <div class="col-md-7">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white fw-semibold py-3">Data Changes</div>
+      <div class="card-body">
+        <div class="row">
+          {% if log.before_data %}
+          <div class="col-6">
+            <h6 class="text-muted small text-uppercase mb-2">Before</h6>
+            <pre class="audit-data-pre bg-light p-2 rounded small">{{ log.before_data|default:"{}" }}</pre>
+          </div>
+          {% endif %}
+          {% if log.after_data %}
+          <div class="col-6">
+            <h6 class="text-muted small text-uppercase mb-2">After</h6>
+            <pre class="audit-data-pre bg-light p-2 rounded small">{{ log.after_data|default:"{}" }}</pre>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

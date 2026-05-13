@@ -1,0 +1,113 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ role.name }} — Admin Xpermisions{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/modules/roles.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <div class="d-flex align-items-center">
+    <a href="{% url 'roles:list' %}" class="btn btn-outline-secondary btn-sm me-3">
+      <i class="bi bi-arrow-left"></i>
+    </a>
+    <h4 class="fw-bold mb-0">{{ role.name }}</h4>
+    {% if role.is_superadmin %}
+    <span class="badge bg-danger ms-2">Superadmin</span>
+    {% endif %}
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'roles:permissions' role.pk %}" class="btn btn-outline-primary btn-sm">
+      <i class="bi bi-sliders me-1"></i>Permissions
+    </a>
+    <a href="{% url 'roles:update' role.pk %}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-pencil me-1"></i>Edit
+    </a>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-md-4">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white fw-semibold py-3">Role Info</div>
+      <div class="card-body">
+        <dl class="row mb-0">
+          <dt class="col-sm-5 text-muted">Name</dt>
+          <dd class="col-sm-7">{{ role.name }}</dd>
+          <dt class="col-sm-5 text-muted">Description</dt>
+          <dd class="col-sm-7">{{ role.description|default:"—" }}</dd>
+          <dt class="col-sm-5 text-muted">Users</dt>
+          <dd class="col-sm-7">{{ role.users.count }}</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-8">
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header bg-white fw-semibold py-3">Module Permissions</div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-sm mb-0">
+            <thead class="table-light">
+              <tr>
+                <th class="ps-3">Module</th>
+                <th class="text-center">View</th>
+                <th class="text-center">Create</th>
+                <th class="text-center">Edit</th>
+                <th class="text-center">Delete</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for perm in module_permissions %}
+              <tr>
+                <td class="ps-3 fw-semibold">{{ perm.get_module_display }}</td>
+                <td class="text-center">{% if perm.can_view %}<i class="bi bi-check-circle-fill text-success"></i>{% else %}<i class="bi bi-x-circle text-muted opacity-50"></i>{% endif %}</td>
+                <td class="text-center">{% if perm.can_create %}<i class="bi bi-check-circle-fill text-success"></i>{% else %}<i class="bi bi-x-circle text-muted opacity-50"></i>{% endif %}</td>
+                <td class="text-center">{% if perm.can_edit %}<i class="bi bi-check-circle-fill text-success"></i>{% else %}<i class="bi bi-x-circle text-muted opacity-50"></i>{% endif %}</td>
+                <td class="text-center">{% if perm.can_delete %}<i class="bi bi-check-circle-fill text-success"></i>{% else %}<i class="bi bi-x-circle text-muted opacity-50"></i>{% endif %}</td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="5" class="text-center text-muted py-3">No permissions configured.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    {% if project_permissions %}
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white fw-semibold py-3">Project Permissions</div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-sm mb-0">
+            <thead class="table-light">
+              <tr>
+                <th class="ps-3">Project</th>
+                <th class="text-center">View</th>
+                <th class="text-center">Create</th>
+                <th class="text-center">Edit</th>
+                <th class="text-center">Delete</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for perm in project_permissions %}
+              <tr>
+                <td class="ps-3 fw-semibold">{{ perm.project.name }}</td>
+                <td class="text-center">{% if perm.can_view %}<i class="bi bi-check-circle-fill text-success"></i>{% else %}<i class="bi bi-x-circle text-muted opacity-50"></i>{% endif %}</td>
+                <td class="text-center">{% if perm.can_create %}<i class="bi bi-check-circle-fill text-success"></i>{% else %}<i class="bi bi-x-circle text-muted opacity-50"></i>{% endif %}</td>
+                <td class="text-center">{% if perm.can_edit %}<i class="bi bi-check-circle-fill text-success"></i>{% else %}<i class="bi bi-x-circle text-muted opacity-50"></i>{% endif %}</td>
+                <td class="text-center">{% if perm.can_delete %}<i class="bi bi-check-circle-fill text-success"></i>{% else %}<i class="bi bi-x-circle text-muted opacity-50"></i>{% endif %}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,3 @@
+# SP certificate and private key — never commit to version control
+sp_cert.pem
+sp_key.pem

@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Audit Log — Admin Xpermisions{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/modules/audit.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <h4 class="fw-bold mb-0"><i class="bi bi-journal-text me-2 text-primary"></i>Audit Log</h4>
+</div>
+
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-body py-2">
+    <form method="get" class="row g-2 align-items-end">
+      <div class="col-sm-4 col-md-3">
+        <select name="action" class="form-select form-select-sm">
+          <option value="">All actions</option>
+          {% for val, label in action_choices %}
+          <option value="{{ val }}" {% if filters.action == val %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-sm-4 col-md-2">
+        <select name="module" class="form-select form-select-sm">
+          <option value="">All modules</option>
+          {% for mod in module_list %}
+          <option value="{{ mod }}" {% if filters.module == mod %}selected{% endif %}>{{ mod }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-sm-4 col-md-2">
+        <input type="text" name="user" class="form-control form-control-sm"
+               placeholder="User email…" value="{{ filters.user }}">
+      </div>
+      <div class="col-sm-4 col-md-2">
+        <input type="date" name="date_from" class="form-control form-control-sm"
+               value="{{ filters.date_from }}">
+      </div>
+      <div class="col-sm-4 col-md-2">
+        <input type="date" name="date_to" class="form-control form-control-sm"
+               value="{{ filters.date_to }}">
+      </div>
+      <div class="col-auto">
+        <button type="submit" class="btn btn-outline-secondary btn-sm">Filter</button>
+        <a href="{% url 'audit:list' %}" class="btn btn-outline-secondary btn-sm ms-1">Reset</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead class="table-light">
+          <tr>
+            <th class="ps-3">Time</th>
+            <th>User</th>
+            <th>Action</th>
+            <th>Module</th>
+            <th>Object</th>
+            <th>IP</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for log in logs %}
+          <tr>
+            <td class="ps-3 text-muted small text-nowrap">{{ log.timestamp|date:"d.m.Y H:i:s" }}</td>
+            <td class="small">{{ log.user|default:"—" }}</td>
+            <td>
+              <span class="badge
+                {% if log.action == 'CREATE' %}bg-success
+                {% elif log.action == 'DELETE' %}bg-danger
+                {% elif log.action == 'LOGIN' %}bg-primary
+                {% elif log.action == 'LOGIN_FAILED' %}bg-warning text-dark
+                {% elif log.action == 'LOGOUT' %}bg-secondary
+                {% else %}bg-light text-dark border{% endif %}">
+                {{ log.action }}
+              </span>
+            </td>
+            <td class="small text-muted">{{ log.module }}</td>
+            <td class="small">
+              <a href="{% url 'audit:detail' log.pk %}" class="text-decoration-none">
+                {{ log.object_repr|truncatechars:50 }}
+              </a>
+            </td>
+            <td class="small text-muted">{{ log.ip_address|default:"—" }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="6" class="text-center text-muted py-4">No audit entries found.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{% include 'components/pagination.html' %}
+{% endblock %}
+
+{% block extra_js %}
+{% load static %}
+<script src="{% static 'js/modules/audit.js' %}"></script>
+{% endblock %}

@@ -1,0 +1,39 @@
+.mjml-editor {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.82rem;
+  line-height: 1.6;
+  min-height: 480px;
+  resize: vertical;
+  background: #1e1e2e;
+  color: #cdd6f4;
+  border: 1px solid #313244;
+  border-radius: 0.4rem;
+}
+
+.mjml-editor:focus {
+  background: #1e1e2e;
+  color: #cdd6f4;
+  border-color: #89b4fa;
+  box-shadow: 0 0 0 0.2rem rgba(137, 180, 250, 0.15);
+}
+
+.mjml-source-pre {
+  background: #1e1e2e;
+  color: #cdd6f4;
+  padding: 1rem;
+  border-radius: 0.4rem;
+  font-size: 0.8rem;
+  line-height: 1.6;
+  max-height: 420px;
+  overflow-y: auto;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.preview-iframe {
+  width: 100%;
+  min-height: 500px;
+  border: none;
+  display: block;
+}
