@@ -1,7 +1,11 @@
 """Tests for the Approval Workflow module."""
+from types import SimpleNamespace
+
 import pytest
 from django.core.exceptions import ValidationError
+from django.urls import reverse
 
+from apps.approvals.conditions import evaluate_conditions
 from apps.approvals.engine import WorkflowEngine, create_workflow_instance
 from apps.approvals.models import (
     ACTION_APPROVE,
@@ -21,7 +25,12 @@ from apps.approvals.models import (
     WorkflowTemplate,
 )
 from apps.approvals.validators import validate_workflow_config
-from tests.factories import ExternalProjectFactory, RoleFactory, UserFactory
+from tests.factories import (
+    ExternalProjectFactory,
+    ProjectPermissionFactory,
+    RoleFactory,
+    UserFactory,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -508,3 +517,210 @@ class TestCreateWorkflowInstance:
         template = WorkflowTemplate.objects.create(name='T', config=config)
         instance = create_workflow_instance(template, project)
         assert instance.content_object == project
+
+
+def _conditional_two_step_config(approver_id, condition):
+    """First step carries *condition*; second step is unconditional."""
+    return {
+        'workflow_name': 'Conditional',
+        'steps': [
+            {
+                'step_key': 'step_one',
+                'step_order': 1,
+                'approval_type': 'any',
+                'approvers': [{'type': 'user', 'id': approver_id}],
+                'conditions': condition,
+            },
+            {
+                'step_key': 'step_two',
+                'step_order': 2,
+                'approval_type': 'any',
+                'approvers': [{'type': 'user', 'id': approver_id}],
+            },
+        ],
+    }
+
+
+# ---------------------------------------------------------------------------
+# Condition evaluator (no DB)
+# ---------------------------------------------------------------------------
+
+class TestEvaluateConditions:
+    def setup_method(self):
+        self.obj = SimpleNamespace(status='active', amount=1500, name='Acme', owner=None)
+
+    def test_empty_conditions_are_true(self):
+        assert evaluate_conditions(None, self.obj) is True
+        assert evaluate_conditions({}, self.obj) is True
+        assert evaluate_conditions({'rules': []}, self.obj) is True
+
+    def test_eq_and_ne(self):
+        assert evaluate_conditions(
+            {'rules': [{'field': 'status', 'operator': 'eq', 'value': 'active'}]}, self.obj
+        )
+        assert not evaluate_conditions(
+            {'rules': [{'field': 'status', 'operator': 'ne', 'value': 'active'}]}, self.obj
+        )
+
+    def test_numeric_comparisons(self):
+        assert evaluate_conditions(
+            {'rules': [{'field': 'amount', 'operator': 'gt', 'value': 1000}]}, self.obj
+        )
+        assert not evaluate_conditions(
+            {'rules': [{'field': 'amount', 'operator': 'lt', 'value': 1000}]}, self.obj
+        )
+
+    def test_match_all_vs_any(self):
+        rules = [
+            {'field': 'status', 'operator': 'eq', 'value': 'active'},
+            {'field': 'amount', 'operator': 'gt', 'value': 9000},
+        ]
+        assert not evaluate_conditions({'match': 'all', 'rules': rules}, self.obj)
+        assert evaluate_conditions({'match': 'any', 'rules': rules}, self.obj)
+
+    def test_dotted_field_and_is_null(self):
+        assert evaluate_conditions(
+            {'rules': [{'field': 'owner', 'operator': 'is_null'}]}, self.obj
+        )
+        assert evaluate_conditions(
+            {'rules': [{'field': 'owner.email', 'operator': 'is_null'}]}, self.obj
+        )
+
+    def test_contains_and_in(self):
+        assert evaluate_conditions(
+            {'rules': [{'field': 'name', 'operator': 'contains', 'value': 'cm'}]}, self.obj
+        )
+        assert evaluate_conditions(
+            {'rules': [{'field': 'status', 'operator': 'in', 'value': ['active', 'pending']}]},
+            self.obj,
+        )
+
+    def test_incompatible_types_are_false_not_error(self):
+        # Comparing a string field with gt against a number must not raise.
+        assert evaluate_conditions(
+            {'rules': [{'field': 'status', 'operator': 'gt', 'value': 5}]}, self.obj
+        ) is False
+
+
+# ---------------------------------------------------------------------------
+# Condition validation
+# ---------------------------------------------------------------------------
+
+class TestValidateConditions:
+    def _config(self, condition):
+        return {
+            'workflow_name': 'WF',
+            'steps': [{
+                'step_key': 'a', 'step_order': 1, 'approval_type': 'any',
+                'approvers': [{'type': 'user', 'id': 1}],
+                'conditions': condition,
+            }],
+        }
+
+    def test_valid_conditions(self):
+        validate_workflow_config(self._config({
+            'match': 'any',
+            'rules': [{'field': 'status', 'operator': 'eq', 'value': 'active'}],
+        }))
+
+    def test_unary_operator_needs_no_value(self):
+        validate_workflow_config(
+            self._config({'rules': [{'field': 'owner', 'operator': 'is_null'}]})
+        )
+
+    def test_invalid_match(self):
+        with pytest.raises(ValidationError, match='match'):
+            validate_workflow_config(self._config(
+                {'match': 'some', 'rules': [{'field': 'a', 'operator': 'eq', 'value': 1}]}
+            ))
+
+    def test_empty_rules(self):
+        with pytest.raises(ValidationError, match='rules'):
+            validate_workflow_config(self._config({'rules': []}))
+
+    def test_invalid_operator(self):
+        with pytest.raises(ValidationError, match='operator'):
+            validate_workflow_config(self._config(
+                {'rules': [{'field': 'a', 'operator': 'bogus', 'value': 1}]}
+            ))
+
+    def test_binary_operator_requires_value(self):
+        with pytest.raises(ValidationError, match="requires a 'value'"):
+            validate_workflow_config(self._config(
+                {'rules': [{'field': 'a', 'operator': 'eq'}]}
+            ))
+
+
+# ---------------------------------------------------------------------------
+# Engine — conditional step skipping
+# ---------------------------------------------------------------------------
+
+@pytest.mark.django_db
+class TestConditionalSteps:
+    def test_failing_condition_skips_step(self, approver, project):
+        # project.status == 'active'; condition requires 'archived' → step skipped.
+        config = _conditional_two_step_config(
+            approver.pk, {'rules': [{'field': 'status', 'operator': 'eq', 'value': 'archived'}]},
+        )
+        template = WorkflowTemplate.objects.create(name='T', config=config)
+        instance = create_workflow_instance(template, project)
+
+        step_one = instance.steps.get(step_key='step_one')
+        step_two = instance.steps.get(step_key='step_two')
+        assert step_one.status == STEP_STATUS_SKIPPED
+        assert step_two.status == STEP_STATUS_PENDING
+
+    def test_passing_condition_activates_step(self, approver, project):
+        config = _conditional_two_step_config(
+            approver.pk, {'rules': [{'field': 'status', 'operator': 'eq', 'value': 'active'}]},
+        )
+        template = WorkflowTemplate.objects.create(name='T', config=config)
+        instance = create_workflow_instance(template, project)
+
+        step_one = instance.steps.get(step_key='step_one')
+        assert step_one.status == STEP_STATUS_PENDING
+
+    def test_all_steps_skipped_completes_workflow(self, approver, project):
+        config = {
+            'workflow_name': 'WF',
+            'steps': [{
+                'step_key': 'only', 'step_order': 1, 'approval_type': 'any',
+                'approvers': [{'type': 'user', 'id': approver.pk}],
+                'conditions': {'rules': [{'field': 'status', 'operator': 'eq', 'value': 'archived'}]},
+            }],
+        }
+        template = WorkflowTemplate.objects.create(name='T', config=config)
+        instance = create_workflow_instance(template, project)
+
+        instance.refresh_from_db()
+        assert instance.status == INSTANCE_STATUS_APPROVED
+        assert instance.steps.get(step_key='only').status == STEP_STATUS_SKIPPED
+
+
+# ---------------------------------------------------------------------------
+# HTML approval views — per-project permission gating
+# ---------------------------------------------------------------------------
+
+@pytest.mark.django_db
+class TestApprovalViewPermissions:
+    def _viewer(self, project):
+        role = RoleFactory()
+        user = UserFactory()
+        user.roles.add(role)
+        ProjectPermissionFactory(role=role, project=project, can_view=True)
+        return user
+
+    def test_user_without_permission_gets_403(self, client, project):
+        client.force_login(UserFactory())
+        response = client.get(reverse('projects:approval', kwargs={'pk': project.pk}))
+        assert response.status_code == 403
+
+    def test_user_with_view_permission_gets_200(self, client, project):
+        client.force_login(self._viewer(project))
+        response = client.get(reverse('projects:approval', kwargs={'pk': project.pk}))
+        assert response.status_code == 200
+
+    def test_view_only_user_cannot_save_config(self, client, project):
+        client.force_login(self._viewer(project))
+        response = client.post(reverse('projects:approval', kwargs={'pk': project.pk}), data={})
+        assert response.status_code == 403

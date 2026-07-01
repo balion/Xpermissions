@@ -1,5 +1,7 @@
 from django.core.exceptions import ValidationError
 
+from apps.approvals.conditions import UNARY_OPERATORS, VALID_MATCH, VALID_OPERATORS
+
 REQUIRED_WORKFLOW_KEYS = {'workflow_name', 'steps'}
 REQUIRED_STEP_KEYS = {'step_key', 'step_order', 'approval_type', 'approvers'}
 VALID_APPROVAL_TYPES = {'any', 'all', 'majority'}
@@ -67,6 +69,9 @@ def _validate_step(step: dict, index: int, seen_keys: set, seen_orders: set) -> 
         if not isinstance(dh, (int, float)) or dh <= 0:
             raise ValidationError(f"{prefix}: 'deadline_hours' must be a positive number.")
 
+    if 'conditions' in step:
+        _validate_step_conditions(step['conditions'], prefix)
+
 
 def _validate_step_key(step_key, prefix: str, seen: set) -> None:
     if not isinstance(step_key, str) or not step_key.strip():
@@ -97,6 +102,42 @@ def _validate_approver(approver: dict, label: str) -> None:
         raise ValidationError(f"{label}: missing 'id'.")
     if not isinstance(approver['id'], (int, str)):
         raise ValidationError(f"{label}: 'id' must be an integer or string.")
+
+
+def _validate_step_conditions(conditions, prefix: str) -> None:
+    if not isinstance(conditions, dict):
+        raise ValidationError(f"{prefix}: 'conditions' must be a JSON object.")
+
+    match = conditions.get('match', 'all')
+    if match not in VALID_MATCH:
+        raise ValidationError(
+            f"{prefix}: conditions 'match' must be one of {sorted(VALID_MATCH)}, got '{match}'."
+        )
+
+    rules = conditions.get('rules')
+    if not isinstance(rules, list) or len(rules) == 0:
+        raise ValidationError(f"{prefix}: conditions 'rules' must be a non-empty list.")
+
+    for k, rule in enumerate(rules):
+        _validate_condition_rule(rule, f"{prefix} rule #{k + 1}")
+
+
+def _validate_condition_rule(rule, label: str) -> None:
+    if not isinstance(rule, dict):
+        raise ValidationError(f"{label}: must be a JSON object.")
+
+    field = rule.get('field')
+    if not isinstance(field, str) or not field.strip():
+        raise ValidationError(f"{label}: 'field' must be a non-empty string.")
+
+    operator = rule.get('operator')
+    if operator not in VALID_OPERATORS:
+        raise ValidationError(
+            f"{label}: 'operator' must be one of {sorted(VALID_OPERATORS)}, got '{operator}'."
+        )
+
+    if operator not in UNARY_OPERATORS and 'value' not in rule:
+        raise ValidationError(f"{label}: operator '{operator}' requires a 'value'.")
 
 
 def _validate_step_notifications(notifications: dict, prefix: str) -> None:

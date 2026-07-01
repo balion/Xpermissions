@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+
+{% block title %}Workflow Templates — Admin Xpermisions{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <div class="d-flex align-items-center">
+    <a href="{% url 'approvals:overview' %}" class="btn btn-outline-secondary btn-sm me-3">
+      <i class="bi bi-arrow-left"></i>
+    </a>
+    <h4 class="fw-bold mb-0"><i class="bi bi-collection me-2 text-primary"></i>Workflow Templates</h4>
+  </div>
+  {% if user_permissions.approvals.create %}
+  <a href="{% url 'approvals:template_create' %}" class="btn btn-primary btn-sm">
+    <i class="bi bi-plus-lg me-1"></i>New Template
+  </a>
+  {% endif %}
+</div>
+
+<div class="card border-0 shadow-sm">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead class="table-light">
+          <tr>
+            <th class="ps-3">Name</th>
+            <th>Version</th>
+            <th>Status</th>
+            <th>Created</th>
+            <th class="text-end pe-3">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for tpl in templates %}
+          <tr>
+            <td class="ps-3 fw-semibold">
+              <a href="{% url 'approvals:template_detail' tpl.pk %}" class="text-decoration-none">{{ tpl.name }}</a>
+            </td>
+            <td class="text-muted small">v{{ tpl.version }}</td>
+            <td>
+              {% if tpl.is_active %}
+              <span class="badge bg-success">Active</span>
+              {% else %}
+              <span class="badge bg-secondary">Inactive</span>
+              {% endif %}
+            </td>
+            <td class="text-muted small">{{ tpl.created_at|date:"d. m. Y" }}</td>
+            <td class="text-end pe-3">
+              {% if user_permissions.approvals.edit %}
+              <a href="{% url 'approvals:template_update' tpl.pk %}" class="btn btn-outline-secondary btn-xs me-1">
+                <i class="bi bi-pencil"></i>
+              </a>
+              {% endif %}
+              {% if user_permissions.approvals.delete %}
+              <button class="btn btn-outline-danger btn-xs"
+                      data-bs-toggle="modal" data-bs-target="#deleteModal"
+                      data-name="{{ tpl.name }}"
+                      data-url="{% url 'approvals:template_delete' tpl.pk %}">
+                <i class="bi bi-trash"></i>
+              </button>
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="5" class="text-center text-muted py-5">
+              <i class="bi bi-collection fs-2 d-block mb-2 opacity-25"></i>
+              No workflow templates yet.
+              {% if user_permissions.approvals.create %}
+              <a href="{% url 'approvals:template_create' %}">Create one</a>.
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{% include 'components/pagination.html' %}
+{% include 'components/confirm_delete_modal.html' %}
+{% endblock %}

@@ -239,20 +239,25 @@ def _start_instance_from_custom_config(approval_config, project, user) -> Workfl
 # Approval workflow views
 # ---------------------------------------------------------------------------
 
+def _get_project_or_403(user, pk, action='view'):
+    """Fetch a project, enforcing the per-project permission for *action*."""
+    project = get_object_or_404(ExternalProject, pk=pk)
+    if not check_project_permission(user, project, action):
+        raise PermissionDenied
+    return project
+
+
 class ProjectApprovalView(LoginRequiredMixin, View):
     """Approval configuration + status page for a project."""
 
     template_name = 'projects/approval.html'
 
-    def _get_project(self, pk):
-        return get_object_or_404(ExternalProject, pk=pk)
-
     def get(self, request, pk):
-        project = self._get_project(pk)
+        project = _get_project_or_403(request.user, pk, 'view')
         return render(request, self.template_name, self._ctx(request, project))
 
     def post(self, request, pk):
-        project = self._get_project(pk)
+        project = _get_project_or_403(request.user, pk, 'edit')
         template_id = request.POST.get('workflow_template') or None
         raw_config = request.POST.get('custom_config', '').strip()
         is_enabled = request.POST.get('is_enabled') == 'on'
@@ -297,7 +302,7 @@ class ProjectWorkflowStartView(LoginRequiredMixin, View):
     """POST — start a new workflow instance for a project using its approval config."""
 
     def post(self, request, pk):
-        project = get_object_or_404(ExternalProject, pk=pk)
+        project = _get_project_or_403(request.user, pk, 'edit')
 
         try:
             approval_config = project.approval_config
@@ -330,7 +335,7 @@ class ProjectWorkflowInstanceView(LoginRequiredMixin, View):
     template_name = 'projects/workflow_instance.html'
 
     def get(self, request, pk, instance_pk):
-        project = get_object_or_404(ExternalProject, pk=pk)
+        project = _get_project_or_403(request.user, pk, 'view')
         instance = get_object_or_404(
             project.workflow_instances.select_related('workflow_template', 'started_by'),
             pk=instance_pk,
@@ -358,7 +363,7 @@ class ProjectWorkflowDecideView(LoginRequiredMixin, View):
     """POST — approve/reject/request_changes on a step."""
 
     def post(self, request, pk, instance_pk, step_pk):
-        project = get_object_or_404(ExternalProject, pk=pk)
+        project = _get_project_or_403(request.user, pk, 'view')
         instance = get_object_or_404(project.workflow_instances, pk=instance_pk)
         step = get_object_or_404(WorkflowStepInstance, pk=step_pk, workflow_instance=instance)
 

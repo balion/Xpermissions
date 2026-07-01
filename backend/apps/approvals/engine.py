@@ -58,7 +58,7 @@ class WorkflowEngine:
         if first_step is None:
             raise ValueError("Workflow has no steps.")
 
-        self._activate_step(first_step)
+        self._activate_or_skip(first_step)
 
     @transaction.atomic
     def decide(
@@ -107,6 +107,36 @@ class WorkflowEngine:
     # Internal helpers
     # ------------------------------------------------------------------
 
+    def _activate_or_skip(self, step: WorkflowStepInstance) -> None:
+        """Activate *step* if its data conditions pass; otherwise skip it and
+        try the next step in order. If no step is activatable, the workflow is
+        considered fully approved."""
+        current = step
+        while current is not None:
+            if self._step_conditions_met(current):
+                self._activate_step(current)
+                return
+            self._skip_step(current)
+            current = (
+                self.instance.steps
+                .filter(step_order__gt=current.step_order)
+                .order_by('step_order')
+                .first()
+            )
+        self._complete_workflow()
+
+    def _step_conditions_met(self, step: WorkflowStepInstance) -> bool:
+        from apps.approvals.conditions import evaluate_conditions
+        conditions = step.step_config.get('conditions')
+        if not conditions:
+            return True
+        return evaluate_conditions(conditions, self.instance.content_object)
+
+    def _skip_step(self, step: WorkflowStepInstance) -> None:
+        step.status = STEP_STATUS_SKIPPED
+        step.completed_at = timezone.now()
+        step.save(update_fields=['status', 'completed_at', 'updated_at'])
+
     def _activate_step(self, step: WorkflowStepInstance) -> None:
         step.status = STEP_STATUS_PENDING
         step.activated_at = timezone.now()
@@ -136,7 +166,7 @@ class WorkflowEngine:
         if next_step is None:
             self._complete_workflow()
         else:
-            self._activate_step(next_step)
+            self._activate_or_skip(next_step)
 
     def _reject_workflow(self, step: WorkflowStepInstance) -> None:
         step.status = STEP_STATUS_REJECTED

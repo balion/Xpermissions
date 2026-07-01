@@ -1,0 +1,122 @@
+{% extends 'base.html' %}
+
+{% block title %}Approvals — Admin Xpermisions{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <h4 class="fw-bold mb-0"><i class="bi bi-check2-square me-2 text-primary"></i>Approvals</h4>
+  {% if user_permissions.approvals.view %}
+  <a href="{% url 'approvals:template_list' %}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-collection me-1"></i>Workflow Templates
+  </a>
+  {% endif %}
+</div>
+
+{# ── My pending approvals ─────────────────────────────────────────────── #}
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-header bg-white fw-semibold py-3">
+    <i class="bi bi-hourglass-split me-2 text-warning"></i>My Pending Approvals
+    <span class="badge bg-warning text-dark ms-1">{{ pending_steps|length }}</span>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead class="table-light">
+          <tr>
+            <th class="ps-3">Workflow</th>
+            <th>Subject</th>
+            <th>Step</th>
+            <th class="text-end pe-3">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in pending_steps %}
+          <tr>
+            <td class="ps-3 fw-semibold">{{ item.instance.workflow_name }}</td>
+            <td class="text-muted small">{{ item.content_object }}</td>
+            <td><span class="badge bg-info text-dark">{{ item.step.step_key }}</span></td>
+            <td class="text-end pe-3">
+              {% if item.url %}
+              <a href="{{ item.url }}" class="btn btn-primary btn-xs">
+                <i class="bi bi-pencil-square me-1"></i>Review
+              </a>
+              {% else %}
+              <span class="text-muted small">—</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="4" class="text-center text-muted py-4">
+              <i class="bi bi-check-circle fs-4 d-block mb-2 opacity-25"></i>
+              Nothing waiting for your approval.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{# ── Projects & their approval config ─────────────────────────────────── #}
+<div class="card border-0 shadow-sm">
+  <div class="card-header bg-white fw-semibold py-3">
+    <i class="bi bi-diagram-3 me-2 text-primary"></i>Projects
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead class="table-light">
+          <tr>
+            <th class="ps-3">Project</th>
+            <th>Approval</th>
+            <th>Workflow</th>
+            <th>Latest status</th>
+            <th class="text-end pe-3">Configure</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for project in projects %}
+          <tr>
+            <td class="ps-3 fw-semibold">{{ project.name }}</td>
+            <td>
+              {% if project.approval_config and project.approval_config.is_enabled %}
+              <span class="badge bg-success">Enabled</span>
+              {% elif project.approval_config %}
+              <span class="badge bg-secondary">Disabled</span>
+              {% else %}
+              <span class="text-muted small">Not configured</span>
+              {% endif %}
+            </td>
+            <td class="text-muted small">
+              {% if project.approval_config.workflow_template %}
+                {{ project.approval_config.workflow_template.name }}
+              {% elif project.approval_config.custom_config %}
+                <em>Custom JSON</em>
+              {% else %}—{% endif %}
+            </td>
+            <td>
+              {% with status=project.approval_status %}
+              {% if status %}
+              <span class="badge step-badge-{{ status }} bg-light text-dark border">{{ status }}</span>
+              {% else %}<span class="text-muted small">—</span>{% endif %}
+              {% endwith %}
+            </td>
+            <td class="text-end pe-3">
+              <a href="{% url 'projects:approval' project.pk %}" class="btn btn-outline-secondary btn-xs">
+                <i class="bi bi-gear me-1"></i>Setup
+              </a>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="5" class="text-center text-muted py-4">No projects yet.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

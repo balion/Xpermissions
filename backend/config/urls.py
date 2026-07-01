@@ -17,6 +17,7 @@ urlpatterns = [
     path('audit/', include('apps.audit.urls')),
     path('projects/', include('apps.projects.urls')),
     path('email-templates/', include('apps.email_templates.urls')),
+    path('approvals/', include('apps.approvals.urls')),
 
     path('api/', include('api.urls')),
 

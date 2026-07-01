@@ -41,6 +41,15 @@
         </a>
       </li>
 
+      {% if user_permissions.approvals.view %}
+      <li class="nav-item">
+        <a class="nav-link {% if request.resolver_match.app_name == 'approvals' %}active{% endif %}"
+           href="{% url 'approvals:overview' %}">
+          <i class="bi bi-check2-square me-2"></i>Approvals
+        </a>
+      </li>
+      {% endif %}
+
       <li class="sidebar-divider mt-2 mb-1 px-2 text-muted small text-uppercase fw-semibold">
         System
       </li>

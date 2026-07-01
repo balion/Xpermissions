@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+
+{% block title %}Delete Template — Admin Xpermisions{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center mb-4">
+  <a href="{% url 'approvals:template_list' %}" class="btn btn-outline-secondary btn-sm me-3">
+    <i class="bi bi-arrow-left"></i>
+  </a>
+  <h4 class="fw-bold mb-0">Delete Workflow Template</h4>
+</div>
+<div class="card border-0 shadow-sm" style="max-width: 480px;">
+  <div class="card-body p-4">
+    <p>Delete template <strong>{{ object.name }}</strong>?</p>
+    <p class="text-muted small">Templates already used by running or finished workflows cannot be deleted.</p>
+    <form method="post" class="d-flex gap-2 mt-4">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-danger"><i class="bi bi-trash me-1"></i>Delete</button>
+      <a href="{% url 'approvals:template_list' %}" class="btn btn-outline-secondary">Cancel</a>
+    </form>
+  </div>
+</div>
+{% endblock %}

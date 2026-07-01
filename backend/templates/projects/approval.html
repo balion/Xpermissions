@@ -169,6 +169,12 @@
         {"type": "role", "id": 2}
       ],
       "deadline_hours": 48,
+      "conditions": {
+        "match": "all",
+        "rules": [
+          {"field": "status", "operator": "eq", "value": "pending_approval"}
+        ]
+      },
       "notifications": {
         "on_activate": {
           "template": "workflow_step_activated",
@@ -189,6 +195,16 @@
             <dd class="col-sm-8"><code>user</code> | <code>role</code> | <code>group</code></dd>
             <dt class="col-sm-4">callback</dt>
             <dd class="col-sm-8">Method called on the project object when workflow finishes</dd>
+            <dt class="col-sm-4">conditions <span class="text-muted">(optional)</span></dt>
+            <dd class="col-sm-8">
+              Step runs only if the project matches; otherwise it is skipped.
+              <code>match</code>: <code>all</code> | <code>any</code>.
+              <code>operator</code>: <code>eq</code>, <code>ne</code>, <code>gt</code>,
+              <code>gte</code>, <code>lt</code>, <code>lte</code>, <code>in</code>,
+              <code>not_in</code>, <code>contains</code>, <code>is_null</code>,
+              <code>is_not_null</code>, <code>is_true</code>, <code>is_false</code>,
+              <code>is_empty</code>, <code>is_not_empty</code>.
+            </dd>
           </dl>
         </div>
       </div>
