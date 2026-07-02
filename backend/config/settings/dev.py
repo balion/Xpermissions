@@ -14,4 +14,14 @@ DATABASES = {
     }
 }
 
-STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
+STORAGES = {
+    'default': {
+        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+    },
+    'staticfiles': {
+        'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage',
+    },
+}
+
+# Print emails to the console in development — no SMTP server needed.
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'

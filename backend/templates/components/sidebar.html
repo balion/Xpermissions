@@ -13,20 +13,26 @@
         Management
       </li>
 
+      {% if user_permissions.users.view %}
       <li class="nav-item">
         <a class="nav-link {% if request.resolver_match.app_name == 'users' %}active{% endif %}"
            href="{% url 'users:list' %}">
           <i class="bi bi-people me-2"></i>Users
         </a>
       </li>
+      {% endif %}
 
+      {% if user_permissions.roles.view %}
       <li class="nav-item">
         <a class="nav-link {% if request.resolver_match.app_name == 'roles' %}active{% endif %}"
            href="{% url 'roles:list' %}">
           <i class="bi bi-shield-check me-2"></i>Roles & Permissions
         </a>
       </li>
+      {% endif %}
 
+      {# Projects stays visible to everyone — the list is already filtered
+         down to projects the user may see via per-project permissions. #}
       <li class="nav-item">
         <a class="nav-link {% if request.resolver_match.app_name == 'projects' %}active{% endif %}"
            href="{% url 'projects:list' %}">
@@ -34,12 +40,14 @@
         </a>
       </li>
 
+      {% if user_permissions.email_templates.view %}
       <li class="nav-item">
         <a class="nav-link {% if request.resolver_match.app_name == 'email_templates' %}active{% endif %}"
            href="{% url 'email_templates:list' %}">
           <i class="bi bi-envelope-paper me-2"></i>Email Templates
         </a>
       </li>
+      {% endif %}
 
       {% if user_permissions.approvals.view %}
       <li class="nav-item">
@@ -54,12 +62,14 @@
         System
       </li>
 
+      {% if user_permissions.audit.view %}
       <li class="nav-item">
         <a class="nav-link {% if request.resolver_match.app_name == 'audit' %}active{% endif %}"
            href="{% url 'audit:list' %}">
           <i class="bi bi-journal-text me-2"></i>Audit Log
         </a>
       </li>
+      {% endif %}
 
       <li class="nav-item">
         <a class="nav-link" href="{% url 'swagger-ui' %}" target="_blank">

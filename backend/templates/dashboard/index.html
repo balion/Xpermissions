@@ -38,7 +38,10 @@
           </div>
           <div>
             <div class="stat-value fw-bold fs-3">{{ stats.active_users }}</div>
-            <div class="text-muted small">Active</div>
+            <div class="text-muted small">
+              Active
+              <span class="ms-1">· {{ stats.locked_users }} locked · {{ stats.pending_users }} pending</span>
+            </div>
           </div>
         </div>
       </div>
@@ -78,6 +81,7 @@
   </div>
 </div>
 
+{% if user_permissions.audit.view %}
 <div class="card border-0 shadow-sm">
   <div class="card-header bg-white d-flex align-items-center justify-content-between py-3">
     <h6 class="mb-0 fw-semibold"><i class="bi bi-journal-text me-2"></i>Recent Activity</h6>
@@ -125,6 +129,7 @@
     {% endif %}
   </div>
 </div>
+{% endif %}
 {% endblock %}
 
 {% block extra_js %}

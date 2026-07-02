@@ -9,9 +9,11 @@
 {% block content %}
 <div class="d-flex align-items-center justify-content-between mb-4">
   <h4 class="fw-bold mb-0"><i class="bi bi-shield-check me-2 text-primary"></i>Roles & Permissions</h4>
+  {% if user_permissions.roles.create %}
   <a href="{% url 'roles:create' %}" class="btn btn-primary btn-sm">
     <i class="bi bi-plus-lg me-1"></i>New Role
   </a>
+  {% endif %}
 </div>
 
 <div class="card border-0 shadow-sm">
@@ -41,17 +43,25 @@
             </td>
             <td class="text-muted small">{{ role.created_at|date:"d. m. Y" }}</td>
             <td class="text-end pe-3">
+              {% if user_permissions.roles.edit %}
               <a href="{% url 'roles:permissions' role.pk %}" class="btn btn-outline-secondary btn-xs me-1"
-                 title="Edit permissions"><i class="bi bi-sliders"></i></a>
-              <a href="{% url 'roles:update' role.pk %}" class="btn btn-outline-secondary btn-xs me-1">
+                 title="Edit permissions" aria-label="Edit permissions of {{ role.name }}">
+                <i class="bi bi-sliders"></i>
+              </a>
+              <a href="{% url 'roles:update' role.pk %}" class="btn btn-outline-secondary btn-xs me-1"
+                 title="Edit role" aria-label="Edit {{ role.name }}">
                 <i class="bi bi-pencil"></i>
               </a>
+              {% endif %}
+              {% if user_permissions.roles.delete %}
               <button class="btn btn-outline-danger btn-xs"
                       data-bs-toggle="modal" data-bs-target="#deleteModal"
                       data-name="{{ role.name }}"
-                      data-url="{% url 'roles:delete' role.pk %}">
+                      data-url="{% url 'roles:delete' role.pk %}"
+                      title="Delete role" aria-label="Delete {{ role.name }}">
                 <i class="bi bi-trash"></i>
               </button>
+              {% endif %}
             </td>
           </tr>
           {% empty %}

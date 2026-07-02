@@ -60,7 +60,10 @@
           </dd>
           <dt class="col-sm-4 text-muted">Status</dt>
           <dd class="col-sm-8">
-            <span class="badge {% if project.status == 'active' %}bg-success{% else %}bg-secondary{% endif %}">
+            <span class="badge
+              {% if project.status == 'active' %}bg-success
+              {% elif project.status == 'pending_approval' %}bg-warning text-dark
+              {% else %}bg-secondary{% endif %}">
               {{ project.get_status_display }}
             </span>
           </dd>

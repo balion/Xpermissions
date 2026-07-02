@@ -9,9 +9,11 @@
 {% block content %}
 <div class="d-flex align-items-center justify-content-between mb-4">
   <h4 class="fw-bold mb-0"><i class="bi bi-people me-2 text-primary"></i>Users</h4>
+  {% if user_permissions.users.create %}
   <a href="{% url 'users:ldap_import' %}" class="btn btn-outline-primary btn-sm">
     <i class="bi bi-person-plus me-1"></i>Import from LDAP
   </a>
+  {% endif %}
 </div>
 
 <div class="card border-0 shadow-sm mb-3">
@@ -19,7 +21,7 @@
     <form method="get" class="row g-2 align-items-end">
       <div class="col-sm-6 col-md-4">
         <input type="text" name="q" class="form-control form-control-sm"
-               placeholder="Search email / username…" value="{{ search_query }}">
+               placeholder="Search email / username / name…" value="{{ search_query }}">
       </div>
       <div class="col-sm-4 col-md-3">
         <select name="status" class="form-select form-select-sm">
@@ -74,15 +76,21 @@
               </span>
             </td>
             <td class="text-end pe-3">
-              <a href="{% url 'users:update' u.pk %}" class="btn btn-outline-secondary btn-xs me-1">
+              {% if user_permissions.users.edit %}
+              <a href="{% url 'users:update' u.pk %}" class="btn btn-outline-secondary btn-xs me-1"
+                 title="Edit user" aria-label="Edit {{ u.email }}">
                 <i class="bi bi-pencil"></i>
               </a>
+              {% endif %}
+              {% if user_permissions.users.delete %}
               <button class="btn btn-outline-danger btn-xs"
                       data-bs-toggle="modal" data-bs-target="#deleteModal"
                       data-name="{{ u.email }}"
-                      data-url="{% url 'users:delete' u.pk %}">
+                      data-url="{% url 'users:delete' u.pk %}"
+                      title="Delete user" aria-label="Delete {{ u.email }}">
                 <i class="bi bi-trash"></i>
               </button>
+              {% endif %}
             </td>
           </tr>
           {% empty %}

@@ -27,6 +27,8 @@ from apps.approvals.models import (
 logger = logging.getLogger(__name__)
 User = get_user_model()
 
+VALID_ACTIONS = {ACTION_APPROVE, ACTION_REJECT, ACTION_REQUEST_CHANGES}
+
 
 class WorkflowEngine:
     """
@@ -69,6 +71,9 @@ class WorkflowEngine:
         comment: str = '',
     ) -> ApprovalDecision:
         """Record a decision for a step and advance the workflow if complete."""
+        if action not in VALID_ACTIONS:
+            raise ValueError(f"Unknown action '{action}'.")
+
         if step_instance.workflow_instance_id != self.instance.pk:
             raise ValueError("Step does not belong to this workflow instance.")
 
@@ -77,6 +82,11 @@ class WorkflowEngine:
 
         if not self.can_decide(step_instance, user):
             raise PermissionError(f"User {user} is not an authorised approver for this step.")
+
+        if action == ACTION_APPROVE and step_instance.decisions.filter(
+            user=user, action=ACTION_APPROVE,
+        ).exists():
+            raise ValueError("You have already approved this step.")
 
         decision = ApprovalDecision.objects.create(
             step_instance=step_instance,
@@ -249,7 +259,12 @@ class WorkflowEngine:
         cfg = step.step_config
         approval_type = cfg.get('approval_type', 'all')
         total_approvers = len(self._resolve_approvers(step))
-        approve_count = step.decisions.filter(action=ACTION_APPROVE).count()
+        # Count distinct users so repeated approvals by one person don't
+        # satisfy 'all'/'majority' thresholds.
+        approve_count = (
+            step.decisions.filter(action=ACTION_APPROVE)
+            .values('user').distinct().count()
+        )
 
         if total_approvers == 0:
             return False

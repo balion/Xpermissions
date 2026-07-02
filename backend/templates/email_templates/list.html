@@ -13,9 +13,11 @@
     <a href="{% url 'email_templates:log' %}" class="btn btn-outline-secondary btn-sm">
       <i class="bi bi-clock-history me-1"></i>Send Log
     </a>
+    {% if user_permissions.email_templates.create %}
     <a href="{% url 'email_templates:create' %}" class="btn btn-primary btn-sm">
       <i class="bi bi-plus-lg me-1"></i>New Template
     </a>
+    {% endif %}
   </div>
 </div>
 
@@ -50,15 +52,21 @@
             </td>
             <td class="text-muted small">{{ tpl.created_at|date:"d. m. Y" }}</td>
             <td class="text-end pe-3">
-              <a href="{% url 'email_templates:update' tpl.pk %}" class="btn btn-outline-secondary btn-xs me-1">
+              {% if user_permissions.email_templates.edit %}
+              <a href="{% url 'email_templates:update' tpl.pk %}" class="btn btn-outline-secondary btn-xs me-1"
+                 title="Edit template" aria-label="Edit {{ tpl.name }}">
                 <i class="bi bi-pencil"></i>
               </a>
+              {% endif %}
+              {% if user_permissions.email_templates.delete %}
               <button class="btn btn-outline-danger btn-xs"
                       data-bs-toggle="modal" data-bs-target="#deleteModal"
                       data-name="{{ tpl.name }}"
-                      data-url="{% url 'email_templates:delete' tpl.pk %}">
+                      data-url="{% url 'email_templates:delete' tpl.pk %}"
+                      title="Delete template" aria-label="Delete {{ tpl.name }}">
                 <i class="bi bi-trash"></i>
               </button>
+              {% endif %}
             </td>
           </tr>
           {% empty %}

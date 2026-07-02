@@ -35,6 +35,21 @@ def render_template(template: EmailTemplate, context: dict) -> tuple[str, str]:
     return subject, html
 
 
+def _json_safe(value):
+    """Coerce a template context to something a JSONField can store.
+
+    Contexts routinely contain model instances (project, user, workflow);
+    anything not JSON-serializable is stored as its string representation.
+    """
+    if isinstance(value, dict):
+        return {str(key): _json_safe(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple, set)):
+        return [_json_safe(item) for item in value]
+    if isinstance(value, (str, int, float, bool)) or value is None:
+        return value
+    return str(value)
+
+
 def send_email_from_template(
     template: EmailTemplate,
     recipient_email: str,
@@ -58,7 +73,7 @@ def send_email_from_template(
             template=template,
             recipient=recipient_email,
             subject=subject,
-            context_data=context,
+            context_data=_json_safe(context),
             status='success',
         )
         return True
@@ -67,7 +82,7 @@ def send_email_from_template(
             template=template,
             recipient=recipient_email,
             subject=template.subject,
-            context_data=context,
+            context_data=_json_safe(context),
             status='failed',
             error=str(exc),
         )

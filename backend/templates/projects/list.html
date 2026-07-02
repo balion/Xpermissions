@@ -9,9 +9,11 @@
 {% block content %}
 <div class="d-flex align-items-center justify-content-between mb-4">
   <h4 class="fw-bold mb-0"><i class="bi bi-diagram-3 me-2 text-primary"></i>External Projects</h4>
+  {% if user_permissions.projects.create %}
   <a href="{% url 'projects:create' %}" class="btn btn-primary btn-sm">
     <i class="bi bi-plus-lg me-1"></i>Add Project
   </a>
+  {% endif %}
 </div>
 
 <div class="card border-0 shadow-sm mb-3">
@@ -26,6 +28,7 @@
           <option value="">All statuses</option>
           <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active</option>
           <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>Inactive</option>
+          <option value="pending_approval" {% if status_filter == 'pending_approval' %}selected{% endif %}>Pending Approval</option>
         </select>
       </div>
       <div class="col-auto">
@@ -63,19 +66,24 @@
               {% else %}—{% endif %}
             </td>
             <td>
-              <span class="badge {% if project.status == 'active' %}bg-success{% else %}bg-secondary{% endif %}">
+              <span class="badge
+                {% if project.status == 'active' %}bg-success
+                {% elif project.status == 'pending_approval' %}bg-warning text-dark
+                {% else %}bg-secondary{% endif %}">
                 {{ project.get_status_display }}
               </span>
             </td>
             <td class="text-muted small">{{ project.created_by|default:"—" }}</td>
             <td class="text-end pe-3">
-              <a href="{% url 'projects:update' project.pk %}" class="btn btn-outline-secondary btn-xs me-1">
+              <a href="{% url 'projects:update' project.pk %}" class="btn btn-outline-secondary btn-xs me-1"
+                 title="Edit project" aria-label="Edit {{ project.name }}">
                 <i class="bi bi-pencil"></i>
               </a>
               <button class="btn btn-outline-danger btn-xs"
                       data-bs-toggle="modal" data-bs-target="#deleteModal"
                       data-name="{{ project.name }}"
-                      data-url="{% url 'projects:delete' project.pk %}">
+                      data-url="{% url 'projects:delete' project.pk %}"
+                      title="Delete project" aria-label="Delete {{ project.name }}">
                 <i class="bi bi-trash"></i>
               </button>
             </td>

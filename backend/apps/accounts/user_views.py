@@ -18,11 +18,17 @@ class UserListView(ModulePermissionMixin, ListView):
     required_action = 'view'
 
     def get_queryset(self):
+        from django.db.models import Q
         qs = super().get_queryset().prefetch_related('roles')
         query = self.request.GET.get('q', '').strip()
         status = self.request.GET.get('status', '').strip()
         if query:
-            qs = qs.filter(email__icontains=query) | qs.filter(username__icontains=query)
+            qs = qs.filter(
+                Q(email__icontains=query)
+                | Q(username__icontains=query)
+                | Q(first_name__icontains=query)
+                | Q(last_name__icontains=query)
+            )
         if status:
             qs = qs.filter(status=status)
         return qs
