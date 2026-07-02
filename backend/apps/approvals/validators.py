@@ -1,12 +1,20 @@
 from django.core.exceptions import ValidationError
 
 from apps.approvals.conditions import UNARY_OPERATORS, VALID_MATCH, VALID_OPERATORS
+from apps.approvals.policies import (
+    CALLBACK_EVENTS,
+    VALID_ON_DEADLINE,
+    VALID_ON_NO_APPROVERS,
+)
 
 REQUIRED_WORKFLOW_KEYS = {'workflow_name', 'steps'}
 REQUIRED_STEP_KEYS = {'step_key', 'step_order', 'approval_type', 'approvers'}
-VALID_APPROVAL_TYPES = {'any', 'all', 'majority'}
-VALID_APPROVER_TYPES = {'user', 'role', 'group'}
-OPTIONAL_NOTIFICATION_KEYS = {'on_activate', 'on_complete', 'on_reject'}
+VALID_APPROVAL_TYPES = {'any', 'all', 'majority', 'quorum'}
+VALID_APPROVER_TYPES = {'user', 'role', 'group', 'attribute'}
+OPTIONAL_NOTIFICATION_KEYS = {
+    'on_activate', 'on_complete', 'on_reject', 'on_request_changes', 'on_deadline',
+}
+VALID_NOTIFICATION_RECIPIENTS = {'approvers', 'requester', 'all'}
 
 
 def validate_workflow_config(config: dict) -> None:
@@ -35,6 +43,27 @@ def validate_workflow_config(config: dict) -> None:
         if not isinstance(cb, str) or not cb.strip():
             raise ValidationError("'callback' must be a non-empty string method name.")
 
+    if 'callbacks' in config:
+        _validate_callbacks(config['callbacks'])
+
+    if 'allow_concurrent' in config and not isinstance(config['allow_concurrent'], bool):
+        raise ValidationError("'allow_concurrent' must be a boolean.")
+
+
+def _validate_callbacks(callbacks) -> None:
+    if not isinstance(callbacks, dict):
+        raise ValidationError("'callbacks' must be a JSON object.")
+    for key, value in callbacks.items():
+        if key not in CALLBACK_EVENTS:
+            raise ValidationError(
+                f"'callbacks' has unknown event '{key}'. "
+                f"Must be one of {sorted(CALLBACK_EVENTS)}."
+            )
+        if not isinstance(value, str) or not value.strip():
+            raise ValidationError(
+                f"'callbacks[\"{key}\"]' must be a non-empty string method name."
+            )
+
 
 def _validate_step(step: dict, index: int, seen_keys: set, seen_orders: set) -> None:
     prefix = f"Step #{index + 1}"
@@ -55,6 +84,13 @@ def _validate_step(step: dict, index: int, seen_keys: set, seen_orders: set) -> 
             f"got '{step['approval_type']}'."
         )
 
+    if step['approval_type'] == 'quorum':
+        qc = step.get('quorum_count')
+        if not isinstance(qc, int) or qc < 1:
+            raise ValidationError(
+                f"{prefix}: approval_type 'quorum' requires a positive integer 'quorum_count'."
+            )
+
     approvers = step['approvers']
     if not isinstance(approvers, list) or len(approvers) == 0:
         raise ValidationError(f"{prefix}: 'approvers' must be a non-empty list.")
@@ -64,13 +100,33 @@ def _validate_step(step: dict, index: int, seen_keys: set, seen_orders: set) -> 
     if 'notifications' in step:
         _validate_step_notifications(step['notifications'], prefix)
 
+    if 'conditions' in step:
+        _validate_step_conditions(step['conditions'], prefix)
+
+    _validate_step_options(step, prefix)
+
+
+def _validate_step_options(step: dict, prefix: str) -> None:
+    """Validate the optional step flags (deadline, policies, self-approval)."""
     if 'deadline_hours' in step:
         dh = step['deadline_hours']
         if not isinstance(dh, (int, float)) or dh <= 0:
             raise ValidationError(f"{prefix}: 'deadline_hours' must be a positive number.")
 
-    if 'conditions' in step:
-        _validate_step_conditions(step['conditions'], prefix)
+    if 'on_deadline' in step and step['on_deadline'] not in VALID_ON_DEADLINE:
+        raise ValidationError(
+            f"{prefix}: 'on_deadline' must be one of {sorted(VALID_ON_DEADLINE)}, "
+            f"got '{step['on_deadline']}'."
+        )
+
+    if 'on_no_approvers' in step and step['on_no_approvers'] not in VALID_ON_NO_APPROVERS:
+        raise ValidationError(
+            f"{prefix}: 'on_no_approvers' must be one of {sorted(VALID_ON_NO_APPROVERS)}, "
+            f"got '{step['on_no_approvers']}'."
+        )
+
+    if 'allow_self_approval' in step and not isinstance(step['allow_self_approval'], bool):
+        raise ValidationError(f"{prefix}: 'allow_self_approval' must be a boolean.")
 
 
 def _validate_step_key(step_key, prefix: str, seen: set) -> None:
@@ -94,14 +150,36 @@ def _validate_approver(approver: dict, label: str) -> None:
         raise ValidationError(f"{label}: must be a JSON object.")
     if 'type' not in approver:
         raise ValidationError(f"{label}: missing 'type'.")
-    if approver['type'] not in VALID_APPROVER_TYPES:
+    approver_type = approver['type']
+    if approver_type not in VALID_APPROVER_TYPES:
         raise ValidationError(
-            f"{label}: 'type' must be one of {sorted(VALID_APPROVER_TYPES)}, got '{approver['type']}'."
+            f"{label}: 'type' must be one of {sorted(VALID_APPROVER_TYPES)}, got '{approver_type}'."
         )
-    if 'id' not in approver:
-        raise ValidationError(f"{label}: missing 'id'.")
-    if not isinstance(approver['id'], (int, str)):
+
+    if approver_type == 'attribute':
+        path = approver.get('path')
+        if not isinstance(path, str) or not path.strip():
+            raise ValidationError(
+                f"{label}: approver type 'attribute' requires a non-empty string 'path'."
+            )
+        return
+
+    if approver_type == 'user':
+        if 'id' not in approver:
+            raise ValidationError(f"{label}: missing 'id'.")
+        if not isinstance(approver['id'], (int, str)):
+            raise ValidationError(f"{label}: 'id' must be an integer or string.")
+        return
+
+    # role / group — referenced by 'id' or, portably, by 'name'
+    if 'id' not in approver and 'name' not in approver:
+        raise ValidationError(f"{label}: requires 'id' or 'name'.")
+    if 'id' in approver and not isinstance(approver['id'], (int, str)):
         raise ValidationError(f"{label}: 'id' must be an integer or string.")
+    if 'name' in approver and (
+        not isinstance(approver['name'], str) or not approver['name'].strip()
+    ):
+        raise ValidationError(f"{label}: 'name' must be a non-empty string.")
 
 
 def _validate_step_conditions(conditions, prefix: str) -> None:
@@ -157,4 +235,10 @@ def _validate_step_notifications(notifications: dict, prefix: str) -> None:
         if not isinstance(entry['template'], str) or not entry['template'].strip():
             raise ValidationError(
                 f"{prefix}: notifications['{key}']['template'] must be a non-empty string."
+            )
+        recipients = entry.get('recipients')
+        if recipients is not None and recipients not in VALID_NOTIFICATION_RECIPIENTS:
+            raise ValidationError(
+                f"{prefix}: notifications['{key}']['recipients'] must be one of "
+                f"{sorted(VALID_NOTIFICATION_RECIPIENTS)}, got '{recipients}'."
             )

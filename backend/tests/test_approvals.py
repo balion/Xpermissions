@@ -15,6 +15,7 @@ from apps.approvals.models import (
     INSTANCE_STATUS_IN_PROGRESS,
     INSTANCE_STATUS_REJECTED,
     STEP_STATUS_APPROVED,
+    STEP_STATUS_CHANGES_REQUESTED,
     STEP_STATUS_PENDING,
     STEP_STATUS_REJECTED,
     STEP_STATUS_SKIPPED,
@@ -290,12 +291,14 @@ class TestWorkflowEngineDecide:
         with pytest.raises(ValueError, match="not pending"):
             engine.decide(step, approver, ACTION_APPROVE)
 
-    def test_request_changes_keeps_step_pending(self, approver, project):
+    def test_request_changes_blocks_step_until_resubmit(self, approver, project):
         instance, step = self._setup(approver, project)
         engine = WorkflowEngine(instance)
         engine.decide(step, approver, ACTION_REQUEST_CHANGES)
         step.refresh_from_db()
-        assert step.status == STEP_STATUS_PENDING
+        assert step.status == STEP_STATUS_CHANGES_REQUESTED
+        instance.refresh_from_db()
+        assert instance.status == INSTANCE_STATUS_IN_PROGRESS
 
     def test_all_approval_type_requires_all_approvers(self, approver, project, requester):
         instance, step = self._setup(approver, project, approval_type='all', second_approver=requester)

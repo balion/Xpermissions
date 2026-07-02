@@ -1,9 +1,7 @@
-import copy
 import json
 
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
@@ -13,6 +11,7 @@ from django.views.generic import CreateView, DeleteView, DetailView, ListView, U
 from apps.approvals.engine import WorkflowEngine, create_workflow_instance
 from apps.approvals.models import (
     INSTANCE_STATUS_IN_PROGRESS,
+    STEP_STATUS_CHANGES_REQUESTED,
     STEP_STATUS_PENDING,
     ProjectApprovalConfig,
     WorkflowInstance,
@@ -217,22 +216,7 @@ def _start_instance_from_custom_config(approval_config, project, user) -> Workfl
         stored.config = custom
         stored.save(update_fields=['config'])
 
-    ct = ContentType.objects.get_for_model(project)
-    instance = WorkflowInstance.objects.create(
-        workflow_template=stored,
-        content_type=ct,
-        object_id=project.pk,
-        config_snapshot=copy.deepcopy(custom),
-        started_by=user,
-    )
-    for step_cfg in sorted(custom.get('steps', []), key=lambda s: s['step_order']):
-        WorkflowStepInstance.objects.create(
-            workflow_instance=instance,
-            step_key=step_cfg['step_key'],
-            step_order=step_cfg['step_order'],
-        )
-    WorkflowEngine(instance).start()
-    return instance
+    return create_workflow_instance(stored, project, started_by=user, config=custom)
 
 
 # ---------------------------------------------------------------------------
@@ -318,12 +302,16 @@ class ProjectWorkflowStartView(LoginRequiredMixin, View):
             messages.error(request, 'No workflow template or custom config configured.')
             return redirect('projects:approval', pk=pk)
 
-        if approval_config.custom_config:
-            instance = _start_instance_from_custom_config(approval_config, project, request.user)
-        else:
-            instance = create_workflow_instance(
-                approval_config.workflow_template, project, started_by=request.user,
-            )
+        try:
+            if approval_config.custom_config:
+                instance = _start_instance_from_custom_config(approval_config, project, request.user)
+            else:
+                instance = create_workflow_instance(
+                    approval_config.workflow_template, project, started_by=request.user,
+                )
+        except ValueError as exc:
+            messages.error(request, str(exc))
+            return redirect('projects:approval', pk=pk)
 
         messages.success(request, f'Workflow "{instance.workflow_name}" started.')
         return redirect('projects:workflow_instance', pk=pk, instance_pk=instance.pk)
@@ -352,11 +340,59 @@ class ProjectWorkflowInstanceView(LoginRequiredMixin, View):
             }
             for step in steps
         ]
+        can_manage = _can_manage_instance(request.user, project, instance)
         return render(request, self.template_name, {
             'project': project,
             'instance': instance,
             'steps_ctx': steps_ctx,
+            'can_cancel': (
+                instance.status == INSTANCE_STATUS_IN_PROGRESS and can_manage
+            ),
+            'can_resubmit': (
+                instance.status == INSTANCE_STATUS_IN_PROGRESS
+                and can_manage
+                and any(s.status == STEP_STATUS_CHANGES_REQUESTED for s in steps)
+            ),
         })
+
+
+def _can_manage_instance(user, project, instance) -> bool:
+    """Requester or a project editor may cancel/resubmit a workflow."""
+    return user == instance.started_by or check_project_permission(user, project, 'edit')
+
+
+class ProjectWorkflowCancelView(LoginRequiredMixin, View):
+    """POST — cancel a running workflow instance."""
+
+    def post(self, request, pk, instance_pk):
+        project = _get_project_or_403(request.user, pk, 'view')
+        instance = get_object_or_404(project.workflow_instances, pk=instance_pk)
+        if not _can_manage_instance(request.user, project, instance):
+            raise PermissionDenied
+
+        try:
+            WorkflowEngine(instance).cancel(user=request.user)
+            messages.success(request, 'Workflow cancelled.')
+        except ValueError as exc:
+            messages.error(request, str(exc))
+        return redirect('projects:workflow_instance', pk=pk, instance_pk=instance_pk)
+
+
+class ProjectWorkflowResubmitView(LoginRequiredMixin, View):
+    """POST — re-activate the step blocked by request_changes."""
+
+    def post(self, request, pk, instance_pk):
+        project = _get_project_or_403(request.user, pk, 'view')
+        instance = get_object_or_404(project.workflow_instances, pk=instance_pk)
+        if not _can_manage_instance(request.user, project, instance):
+            raise PermissionDenied
+
+        try:
+            step = WorkflowEngine(instance).resubmit(user=request.user)
+            messages.success(request, f'Step "{step.step_key}" re-activated for review.')
+        except ValueError as exc:
+            messages.error(request, str(exc))
+        return redirect('projects:workflow_instance', pk=pk, instance_pk=instance_pk)
 
 
 class ProjectWorkflowDecideView(LoginRequiredMixin, View):

@@ -23,4 +23,14 @@ urlpatterns = [
         views.ProjectWorkflowDecideView.as_view(),
         name='workflow_decide',
     ),
+    path(
+        '<int:pk>/approval/instances/<int:instance_pk>/cancel/',
+        views.ProjectWorkflowCancelView.as_view(),
+        name='workflow_cancel',
+    ),
+    path(
+        '<int:pk>/approval/instances/<int:instance_pk>/resubmit/',
+        views.ProjectWorkflowResubmitView.as_view(),
+        name='workflow_resubmit',
+    ),
 ]

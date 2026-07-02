@@ -67,12 +67,16 @@ def evaluate_conditions(conditions: dict | None, obj: Any) -> bool:
 
 
 def _evaluate_rule(rule: dict, obj: Any) -> bool:
-    actual = _resolve_field(obj, rule.get('field'))
+    actual = resolve_field(obj, rule.get('field'))
     return _apply_operator(rule.get('operator'), actual, rule.get('value'))
 
 
-def _resolve_field(obj: Any, field: str | None) -> Any:
-    """Resolve a (possibly dotted) attribute path on *obj*; missing → None."""
+def resolve_field(obj: Any, field: str | None) -> Any:
+    """Resolve a (possibly dotted) attribute path on *obj*; missing → None.
+
+    Public — also used by the engine to resolve 'attribute' approvers
+    (e.g. {"type": "attribute", "path": "created_by"}).
+    """
     if not field:
         return None
     current = obj

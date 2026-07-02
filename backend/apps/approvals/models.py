@@ -80,6 +80,22 @@ class WorkflowTemplate(TimestampedModel):
         from apps.approvals.validators import validate_workflow_config
         validate_workflow_config(self.config)
 
+    def save(self, *args, **kwargs):
+        # Bump the version whenever the config of an existing template changes.
+        if self.pk:
+            old_config = (
+                WorkflowTemplate.objects
+                .filter(pk=self.pk)
+                .values_list('config', flat=True)
+                .first()
+            )
+            if old_config is not None and old_config != self.config:
+                self.version += 1
+                update_fields = kwargs.get('update_fields')
+                if update_fields is not None and 'version' not in update_fields:
+                    kwargs['update_fields'] = list(update_fields) + ['version']
+        super().save(*args, **kwargs)
+
 
 class WorkflowInstance(TimestampedModel):
     """
@@ -150,6 +166,9 @@ class WorkflowStepInstance(TimestampedModel):
         db_index=True,
     )
     deadline_at = models.DateTimeField(null=True, blank=True)
+    # Set once the on_deadline policy has been applied so the periodic
+    # deadline processor never handles the same step twice.
+    deadline_handled = models.BooleanField(default=False)
     activated_at = models.DateTimeField(null=True, blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)
 
