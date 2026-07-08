@@ -22,6 +22,9 @@
           {% if form.config.errors %}<div class="text-danger small mt-1">{{ form.config.errors.0 }}</div>{% endif %}
         </div>
       </div>
+
+      {# Visual builder for step "conditions" — edits the JSON above #}
+      <div class="condition-builder" data-target="{{ form.config.id_for_label }}"></div>
     </div>
 
     <div class="col-lg-5">
@@ -55,4 +58,9 @@
     <a href="{% url 'approvals:template_list' %}" class="btn btn-outline-secondary">Cancel</a>
   </div>
 </form>
+{% endblock %}
+
+{% block extra_js %}
+{% load static %}
+<script src="{% static 'js/modules/condition_builder.js' %}"></script>
 {% endblock %}

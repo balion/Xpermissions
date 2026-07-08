@@ -161,6 +161,29 @@ class TestDynamicApprovers:
         assert engine.can_decide(step, owner) is True
         assert engine.can_decide(step, requester) is False
 
+    def test_user_approver_by_email(self, project):
+        user = UserFactory(email='approver@example.org')
+        config = _config([_step([{'type': 'user', 'email': 'Approver@Example.org'}])])
+        instance = _start(config, project)
+        step = instance.steps.first()
+        engine = WorkflowEngine(instance)
+        assert engine.can_decide(step, user) is True
+
+        engine.decide(step, user, ACTION_APPROVE)
+        instance.refresh_from_db()
+        assert instance.status == INSTANCE_STATUS_APPROVED
+
+    def test_user_approver_id_takes_precedence_over_email(self, project):
+        by_id = UserFactory()
+        by_email = UserFactory(email='fallback@example.org')
+        config = _config([_step([
+            {'type': 'user', 'id': by_id.pk, 'email': 'fallback@example.org'},
+        ])])
+        instance = _start(config, project)
+        engine = WorkflowEngine(instance)
+        assert engine.can_decide(instance.steps.first(), by_id) is True
+        assert engine.can_decide(instance.steps.first(), by_email) is False
+
     def test_role_approver_by_name(self, project):
         role = RoleFactory(name='Finance')
         member = UserFactory()
@@ -462,6 +485,20 @@ class TestValidatorNewKeys:
     def test_role_approver_without_id_or_name_invalid(self):
         step = self._base_step(approvers=[{'type': 'role'}])
         with pytest.raises(ValidationError, match="'id' or 'name'"):
+            validate_workflow_config({'workflow_name': 'WF', 'steps': [step]})
+
+    def test_user_approver_by_email_valid(self):
+        step = self._base_step(approvers=[{'type': 'user', 'email': 'a@b.cz'}])
+        validate_workflow_config({'workflow_name': 'WF', 'steps': [step]})
+
+    def test_user_approver_invalid_email(self):
+        step = self._base_step(approvers=[{'type': 'user', 'email': 'not-an-email'}])
+        with pytest.raises(ValidationError, match='email'):
+            validate_workflow_config({'workflow_name': 'WF', 'steps': [step]})
+
+    def test_user_approver_without_id_or_email_invalid(self):
+        step = self._base_step(approvers=[{'type': 'user'}])
+        with pytest.raises(ValidationError, match="'id' or 'email'"):
             validate_workflow_config({'workflow_name': 'WF', 'steps': [step]})
 
     def test_invalid_on_deadline(self):

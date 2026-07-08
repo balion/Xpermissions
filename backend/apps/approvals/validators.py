@@ -165,10 +165,14 @@ def _validate_approver(approver: dict, label: str) -> None:
         return
 
     if approver_type == 'user':
-        if 'id' not in approver:
-            raise ValidationError(f"{label}: missing 'id'.")
-        if not isinstance(approver['id'], (int, str)):
+        if 'id' not in approver and 'email' not in approver:
+            raise ValidationError(f"{label}: requires 'id' or 'email'.")
+        if 'id' in approver and not isinstance(approver['id'], (int, str)):
             raise ValidationError(f"{label}: 'id' must be an integer or string.")
+        if 'email' in approver and (
+            not isinstance(approver['email'], str) or '@' not in approver['email']
+        ):
+            raise ValidationError(f"{label}: 'email' must be a valid email address string.")
         return
 
     # role / group — referenced by 'id' or, portably, by 'name'

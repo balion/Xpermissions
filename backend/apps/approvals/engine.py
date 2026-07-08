@@ -341,12 +341,26 @@ class WorkflowEngine:
         return resolver(entry)
 
     def _approvers_by_user(self, entry: dict) -> list:
+        """Look a user up by 'id' (preferred) or 'email' — emails survive
+        moves between environments where pks differ."""
         approver_id = entry.get('id')
-        try:
-            return [User.objects.get(pk=approver_id)]
-        except User.DoesNotExist:
-            logger.warning("Approver user pk=%s not found.", approver_id)
-            return []
+        if approver_id is not None:
+            user = User.objects.filter(pk=approver_id).first()
+            if user is None:
+                logger.warning("Approver user pk=%s not found.", approver_id)
+                return []
+            return [user]
+
+        email = entry.get('email')
+        if email:
+            user = User.objects.filter(email__iexact=email).first()
+            if user is None:
+                logger.warning("Approver user email=%s not found.", email)
+                return []
+            return [user]
+
+        logger.warning("Approver entry %r has neither 'id' nor 'email'.", entry)
+        return []
 
     def _approvers_by_role(self, entry: dict) -> list:
         from apps.roles.models import Role
